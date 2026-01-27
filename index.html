@@ -21,7 +21,11 @@
                 <h1>Ultimate Store</h1>
             </div>
             <p class="tagline">Chat with us to find your perfect product</p>
-            <a href="seller.html" class="seller-link">👨‍💼 Seller Dashboard →</a>
+            <div class="header-links">
+                <button class="my-orders-btn" onclick="showOrdersModal()">📦 My Orders <span id="orderCount"
+                        class="order-count">0</span></button>
+                <a href="seller.html" class="seller-link">👨‍💼 Seller Dashboard →</a>
+            </div>
         </header>
 
         <!-- Status Bar -->
@@ -47,6 +51,36 @@
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
             <span class="loading-text" id="loadingText">Loading products...</span>
+        </div>
+
+        <!-- Orders Modal -->
+        <div class="modal" id="ordersModal">
+            <div class="modal-content orders-modal-content">
+                <div class="modal-header">
+                    <h3>📦 My Orders</h3>
+                    <button class="close-modal" onclick="hideOrdersModal()">✕</button>
+                </div>
+                <div class="modal-body orders-list" id="ordersList">
+                    <!-- Orders will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Modal -->
+        <div class="modal" id="chatModal">
+            <div class="modal-content chat-modal-content">
+                <div class="modal-header">
+                    <h3 id="chatModalTitle">💬 Chat with Seller</h3>
+                    <button class="close-modal" onclick="closeChatModal()">✕</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Chat messages will be rendered here -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                    <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -346,6 +346,9 @@ function createOrderCard(order, isNew = false) {
             </div>
         </div>
         <div class="order-actions">
+            <button class="action-btn chat" onclick="openChat('${order.id}', '${order.productName}')">
+                💬 Chat
+            </button>
             <button class="action-btn confirm" onclick="confirmOrder('${order.id}')" ${isConfirmed ? 'disabled' : ''}>
                 ${isConfirmed ? '✅ Confirmed' : '✓ Confirm Order'}
             </button>
@@ -366,6 +369,10 @@ async function confirmOrder(orderId) {
         await db.collection('orders').doc(orderId).update({
             status: 'confirmed'
         });
+
+        // Delete chat messages when order is confirmed
+        await deleteOrderMessages(orderId);
+
         console.log('✅ Order confirmed:', orderId);
     } catch (error) {
         console.error('Failed to confirm order:', error);
@@ -674,4 +681,130 @@ document.addEventListener('DOMContentLoaded', initDashboard);
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initDashboard();
+}
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+let currentChatOrderId = null;
+let chatMessagesUnsubscribe = null;
+
+function openChat(orderId, productName) {
+    currentChatOrderId = orderId;
+
+    // Update chat modal title
+    document.getElementById('chatModalTitle').textContent = `💬 Chat: ${productName}`;
+
+    // Clear previous messages
+    document.getElementById('chatMessages').innerHTML = `
+        <div class="chat-empty">Loading messages...</div>
+    `;
+
+    // Show chat modal
+    document.getElementById('chatModal').classList.add('active');
+
+    // Listen to messages for this order
+    listenToChatMessages(orderId);
+
+    // Focus chat input
+    document.getElementById('chatInput').focus();
+
+    // Set up enter key to send
+    document.getElementById('chatInput').onkeypress = (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+    };
+}
+
+function closeChatModal() {
+    document.getElementById('chatModal').classList.remove('active');
+    currentChatOrderId = null;
+
+    // Unsubscribe from messages
+    if (chatMessagesUnsubscribe) {
+        chatMessagesUnsubscribe();
+        chatMessagesUnsubscribe = null;
+    }
+}
+
+function listenToChatMessages(orderId) {
+    // Unsubscribe from previous listener
+    if (chatMessagesUnsubscribe) {
+        chatMessagesUnsubscribe();
+    }
+
+    chatMessagesUnsubscribe = db.collection('orders').doc(orderId)
+        .collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+            const messagesContainer = document.getElementById('chatMessages');
+
+            if (snapshot.empty) {
+                messagesContainer.innerHTML = `
+                    <div class="chat-empty">
+                        <p>👋 No messages yet</p>
+                        <p style="font-size: 12px; margin-top: 8px;">The buyer hasn't started a conversation</p>
+                    </div>
+                `;
+                return;
+            }
+
+            messagesContainer.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const msg = doc.data();
+                const time = msg.timestamp ? formatTimestamp(msg.timestamp.toDate()) : '';
+                const msgDiv = document.createElement('div');
+                // Swap classes: buyer messages appear on left (from their perspective), seller on right
+                msgDiv.className = `chat-message ${msg.sender === 'seller' ? 'seller-sent' : 'buyer-sent'}`;
+                msgDiv.innerHTML = `
+                    <div>${msg.text}</div>
+                    <div class="chat-message-time">${time}</div>
+                `;
+                messagesContainer.appendChild(msgDiv);
+            });
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, (error) => {
+            console.error('Error listening to messages:', error);
+        });
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+
+    if (!text || !currentChatOrderId) return;
+
+    input.value = '';
+
+    try {
+        await db.collection('orders').doc(currentChatOrderId)
+            .collection('messages').add({
+                text: text,
+                sender: 'seller',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        console.log('💬 Message sent');
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        alert('Failed to send message. Please try again.');
+    }
+}
+
+// Delete chat messages when order is confirmed
+async function deleteOrderMessages(orderId) {
+    try {
+        const messagesRef = db.collection('orders').doc(orderId).collection('messages');
+        const snapshot = await messagesRef.get();
+
+        const batch = db.batch();
+        snapshot.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log('🗑️ Chat messages deleted for order:', orderId);
+    } catch (error) {
+        console.error('Failed to delete messages:', error);
+    }
 }

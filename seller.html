@@ -142,6 +142,23 @@
             <div class="spinner"></div>
             <span class="loading-text" id="loadingText">Loading...</span>
         </div>
+
+        <!-- Chat Modal -->
+        <div class="modal" id="chatModal">
+            <div class="modal-content chat-modal-content">
+                <div class="modal-header">
+                    <h3 id="chatModalTitle">💬 Chat with Buyer</h3>
+                    <button class="close-modal" onclick="closeChatModal()">✕</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Chat messages will be rendered here -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                    <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->

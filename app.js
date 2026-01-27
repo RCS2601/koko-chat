@@ -232,12 +232,12 @@ Would you like to:
     }
 }
 
-// Generate unique session ID for buyer
+// Generate unique session ID for buyer (uses localStorage for persistence)
 function getBuyerSessionId() {
-    let sessionId = sessionStorage.getItem('buyerSessionId');
+    let sessionId = localStorage.getItem('buyerSessionId');
     if (!sessionId) {
         sessionId = 'buyer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        sessionStorage.setItem('buyerSessionId', sessionId);
+        localStorage.setItem('buyerSessionId', sessionId);
     }
     return sessionId;
 }
@@ -468,3 +468,219 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 console.log('🚀 Ultimate Store App loaded');
+
+// ============================================
+// MY ORDERS FUNCTIONALITY
+// ============================================
+let myOrders = [];
+let currentChatOrderId = null;
+let chatMessagesUnsubscribe = null;
+
+// Listen to my orders
+function listenToMyOrders() {
+    const sessionId = getBuyerSessionId();
+    console.log('🔍 Listening to orders for session:', sessionId);
+
+    db.collection('orders')
+        .where('buyerSession', '==', sessionId)
+        .onSnapshot((snapshot) => {
+            myOrders = [];
+            snapshot.forEach((doc) => {
+                myOrders.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            // Sort client-side by timestamp (newest first)
+            myOrders.sort((a, b) => {
+                const timeA = a.timestamp?.toDate?.() || new Date(0);
+                const timeB = b.timestamp?.toDate?.() || new Date(0);
+                return timeB - timeA;
+            });
+
+            // Update order count badge
+            const orderCountEl = document.getElementById('orderCount');
+            if (orderCountEl) {
+                const pendingCount = myOrders.filter(o => o.status === 'pending').length;
+                orderCountEl.textContent = pendingCount;
+                orderCountEl.style.display = pendingCount > 0 ? 'inline' : 'none';
+            }
+
+            console.log('📦 My orders updated:', myOrders.length);
+        }, (error) => {
+            console.error('Error listening to orders:', error);
+        });
+}
+
+// Show orders modal
+function showOrdersModal() {
+    const modal = document.getElementById('ordersModal');
+    const ordersList = document.getElementById('ordersList');
+
+    if (myOrders.length === 0) {
+        ordersList.innerHTML = `
+            <div class="empty-orders">
+                <div class="empty-orders-icon">📦</div>
+                <p>No orders yet!</p>
+                <p style="font-size: 13px; margin-top: 8px;">Chat with us to find products you'll love</p>
+            </div>
+        `;
+    } else {
+        ordersList.innerHTML = myOrders.map(order => {
+            const timestamp = order.timestamp ? formatTimestamp(order.timestamp.toDate()) : 'Just now';
+            return `
+                <div class="order-item">
+                    <div class="order-item-header">
+                        <span class="order-item-name">${order.productName}</span>
+                        <span class="order-item-status ${order.status}">${order.status}</span>
+                    </div>
+                    <div class="order-item-meta">
+                        🏪 ${order.seller} • Rp ${formatPrice(order.price)} • ${timestamp}
+                    </div>
+                    <div class="order-item-actions">
+                        <button class="order-chat-btn" onclick="openChat('${order.id}', '${order.seller}', '${order.productName}')">
+                            💬 Chat with Seller
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    modal.classList.add('active');
+}
+
+function hideOrdersModal() {
+    document.getElementById('ordersModal').classList.remove('active');
+}
+
+// Format timestamp for display
+function formatTimestamp(date) {
+    const now = new Date();
+    const diff = now - date;
+
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) {
+        const mins = Math.floor(diff / 60000);
+        return `${mins}m ago`;
+    }
+    if (diff < 86400000) {
+        const hours = Math.floor(diff / 3600000);
+        return `${hours}h ago`;
+    }
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+
+function openChat(orderId, sellerName, productName) {
+    currentChatOrderId = orderId;
+
+    // Update chat modal title
+    document.getElementById('chatModalTitle').textContent = `💬 Chat: ${productName}`;
+
+    // Clear previous messages
+    document.getElementById('chatMessages').innerHTML = `
+        <div class="chat-empty">Loading messages...</div>
+    `;
+
+    // Show chat modal
+    document.getElementById('chatModal').classList.add('active');
+
+    // Hide orders modal
+    hideOrdersModal();
+
+    // Listen to messages for this order
+    listenToChatMessages(orderId);
+
+    // Focus chat input
+    document.getElementById('chatInput').focus();
+
+    // Set up enter key to send
+    document.getElementById('chatInput').onkeypress = (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+    };
+}
+
+function closeChatModal() {
+    document.getElementById('chatModal').classList.remove('active');
+    currentChatOrderId = null;
+
+    // Unsubscribe from messages
+    if (chatMessagesUnsubscribe) {
+        chatMessagesUnsubscribe();
+        chatMessagesUnsubscribe = null;
+    }
+}
+
+function listenToChatMessages(orderId) {
+    // Unsubscribe from previous listener
+    if (chatMessagesUnsubscribe) {
+        chatMessagesUnsubscribe();
+    }
+
+    chatMessagesUnsubscribe = db.collection('orders').doc(orderId)
+        .collection('messages')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+            const messagesContainer = document.getElementById('chatMessages');
+
+            if (snapshot.empty) {
+                messagesContainer.innerHTML = `
+                    <div class="chat-empty">
+                        <p>👋 Start the conversation!</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Ask about your order or say hello</p>
+                    </div>
+                `;
+                return;
+            }
+
+            messagesContainer.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const msg = doc.data();
+                const time = msg.timestamp ? formatTimestamp(msg.timestamp.toDate()) : '';
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `chat-message ${msg.sender}`;
+                msgDiv.innerHTML = `
+                    <div>${msg.text}</div>
+                    <div class="chat-message-time">${time}</div>
+                `;
+                messagesContainer.appendChild(msgDiv);
+            });
+
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, (error) => {
+            console.error('Error listening to messages:', error);
+        });
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+
+    if (!text || !currentChatOrderId) return;
+
+    input.value = '';
+
+    try {
+        await db.collection('orders').doc(currentChatOrderId)
+            .collection('messages').add({
+                text: text,
+                sender: 'buyer',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        console.log('💬 Message sent');
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        alert('Failed to send message. Please try again.');
+    }
+}
+
+// Start listening to orders when app loads
+setTimeout(() => {
+    listenToMyOrders();
+}, 500);

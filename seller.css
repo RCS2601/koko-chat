@@ -977,3 +977,107 @@ body {
     color: var(--text-secondary);
     font-weight: 500;
 }
+
+/* Chat Button */
+.action-btn.chat {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+}
+
+.action-btn.chat:hover {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
+/* Chat Modal */
+.chat-modal-content {
+    max-height: 80vh;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f9fafb;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.chat-message.seller-sent {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--primary) 0%, #10b981 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-message.buyer-sent {
+    align-self: flex-start;
+    background: white;
+    color: var(--text-primary);
+    border: 1px solid #e5e7eb;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-message-time {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 0 0 16px 16px;
+}
+
+.chat-input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-input-area input:focus {
+    border-color: var(--primary);
+}
+
+.chat-send-btn {
+    padding: 12px 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-send-btn:hover {
+    background: var(--primary-dark);
+}
+
+.chat-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
