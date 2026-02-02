@@ -106,6 +106,8 @@ function goBackToGrid() {
 }
 
 function viewSeller(sellerId, sellerName) {
+    // Mark this seller as viewed (changes badge from red to orange)
+    markSellerAsViewed(sellerName);
     showSellerDetail(sellerId, sellerName);
 }
 
@@ -192,6 +194,10 @@ function listenToOrders() {
             });
 
             console.log('📦 Orders updated:', orders.length);
+
+            // Always re-render sellers grid to update notification badges
+            renderSellersGrid();
+
             if (currentSeller) {
                 renderOrders();
                 updateStats();
@@ -217,13 +223,37 @@ function renderSellersGrid() {
         return;
     }
 
+    // Get viewed sellers from localStorage
+    const viewedSellers = getViewedSellers();
+
     // Create cards for each seller
     sellers.forEach(seller => {
+        // Count pending orders for this seller
+        const sellerPendingOrders = orders.filter(o =>
+            o.seller === seller.name && o.status === 'pending'
+        );
+        const pendingCount = sellerPendingOrders.length;
+
+        // Check if seller has been viewed
+        const hasBeenViewed = viewedSellers.includes(seller.name);
+
+        // Determine badge type: red (new) or orange (viewed but has orders)
+        let badgeHTML = '';
+        if (pendingCount > 0) {
+            if (hasBeenViewed) {
+                // Orange badge - ongoing (viewed but still has pending orders)
+                badgeHTML = `<span class="order-badge ongoing">${pendingCount}</span>`;
+            } else {
+                // Red badge - new (not viewed yet)
+                badgeHTML = `<span class="order-badge new">${pendingCount}</span>`;
+            }
+        }
+
         const card = document.createElement('div');
         card.className = 'seller-card';
         card.onclick = () => viewSeller(seller.id, seller.name);
         card.innerHTML = `
-            <div class="seller-card-icon">🏪</div>
+            <div class="seller-card-icon">🏪${badgeHTML}</div>
             <h3 class="seller-card-name">${seller.name}</h3>
             <div class="seller-card-stats">
                 <span>📦 ${seller.productCount || 0} products</span>
@@ -242,6 +272,32 @@ function renderSellersGrid() {
         <h3 class="add-card-text">Add New Seller</h3>
     `;
     sellersGrid.appendChild(addCard);
+}
+
+// ============================================
+// Viewed Sellers Tracking (localStorage)
+// ============================================
+function getViewedSellers() {
+    try {
+        return JSON.parse(localStorage.getItem('viewedSellers') || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function markSellerAsViewed(sellerName) {
+    const viewed = getViewedSellers();
+    if (!viewed.includes(sellerName)) {
+        viewed.push(sellerName);
+        localStorage.setItem('viewedSellers', JSON.stringify(viewed));
+    }
+}
+
+function clearViewedSeller(sellerName) {
+    // Called when seller has no more pending orders
+    const viewed = getViewedSellers();
+    const filtered = viewed.filter(s => s !== sellerName);
+    localStorage.setItem('viewedSellers', JSON.stringify(filtered));
 }
 
 // ============================================
@@ -330,18 +386,28 @@ function createOrderCard(order, isNew = false) {
         formatTimestamp(order.timestamp.toDate()) :
         'Just now';
 
+    // Get order ID and payment method
+    const orderId = order.orderId ? `#${order.orderId}` : '';
+    const paymentIcon = order.paymentMethod === 'qris' ? '📱 QRIS' :
+        order.paymentMethod === 'cash' ? '💵 Cash' : '';
+    const quantity = order.quantity > 1 ? ` × ${order.quantity}` : '';
+
     card.innerHTML = `
         <div class="order-header">
             <div class="order-info">
                 <h4>
-                    ${order.productName}
+                    ${orderId ? `<span class="order-id">${orderId}</span>` : ''}
+                    ${order.productName}${quantity}
                     ${isNew && !isConfirmed ? '<span class="new-badge">NEW!</span>' : ''}
                 </h4>
                 <div class="seller-name">🏪 ${order.seller}</div>
-                <div class="order-time">🕐 ${timestamp}</div>
+                <div class="order-meta">
+                    <span>🕐 ${timestamp}</span>
+                    ${paymentIcon ? `<span class="payment-badge">${paymentIcon}</span>` : ''}
+                </div>
             </div>
             <div>
-                <span class="order-price">Rp ${formatPrice(order.price)}</span>
+                <span class="order-price">Rp ${formatPrice(order.totalPrice || order.price)}</span>
                 <span class="order-status ${order.status}">${order.status}</span>
             </div>
         </div>
@@ -808,3 +874,77 @@ async function deleteOrderMessages(orderId) {
         console.error('Failed to delete messages:', error);
     }
 }
+
+// ============================================
+// FEEDBACK FUNCTIONALITY
+// ============================================
+let allFeedback = [];
+
+function listenToFeedback() {
+    db.collection('feedback')
+        .orderBy('timestamp', 'desc')
+        .onSnapshot((snapshot) => {
+            allFeedback = [];
+            snapshot.forEach((doc) => {
+                allFeedback.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            console.log('📝 Feedback updated:', allFeedback.length);
+        }, (error) => {
+            console.error('Error listening to feedback:', error);
+        });
+}
+
+function showFeedbackListModal() {
+    const modal = document.getElementById('feedbackListModal');
+    const feedbackList = document.getElementById('feedbackList');
+
+    if (allFeedback.length === 0) {
+        feedbackList.innerHTML = `
+            <div class="empty-feedback">
+                <div class="empty-feedback-icon">📝</div>
+                <p>No feedback yet!</p>
+                <p style="font-size: 13px; margin-top: 8px;">Feedback from buyers will appear here</p>
+            </div>
+        `;
+    } else {
+        feedbackList.innerHTML = allFeedback.map(feedback => {
+            const timestamp = feedback.timestamp ? formatTimestamp(feedback.timestamp.toDate()) : 'Just now';
+            return `
+                <div class="feedback-item">
+                    <div class="feedback-item-header">
+                        <span class="feedback-search-query">🔍 "${feedback.searchQuery || 'General'}"</span>
+                        <span class="feedback-time">${timestamp}</span>
+                    </div>
+                    <div class="feedback-text">${feedback.text}</div>
+                    <button class="feedback-delete-btn" onclick="deleteFeedback('${feedback.id}')">
+                        ✓ Mark as Done
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    modal.classList.add('active');
+}
+
+function hideFeedbackListModal() {
+    document.getElementById('feedbackListModal').classList.remove('active');
+}
+
+async function deleteFeedback(feedbackId) {
+    try {
+        await db.collection('feedback').doc(feedbackId).delete();
+        console.log('✅ Feedback deleted:', feedbackId);
+    } catch (error) {
+        console.error('Failed to delete feedback:', error);
+        alert('Failed to delete feedback. Please try again.');
+    }
+}
+
+// Start listening to feedback when dashboard loads
+setTimeout(() => {
+    listenToFeedback();
+}, 500);

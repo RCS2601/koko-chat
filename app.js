@@ -1,15 +1,16 @@
 // ============================================
 // Ultimate Store - Chat Application
 // Buyers are Kings! 
-// Uses Gemini API for natural language processing
+// Uses Groq API for natural language processing
 // ============================================
 
 // ============================================
-// GEMINI API CONFIGURATION
+// GROQ API CONFIGURATION
 // ============================================
-// Gemini 2.0 Flash - Updated January 2026
-const GEMINI_API_KEY = 'AIzaSyAsGztzzb-jiQoEcZpk8OLRiDdxdNJxLWA';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+// Groq with Llama 3.3 70B - Updated February 2026
+const GROQ_API_KEY = 'YOUR_GROQ_API_KEY';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 // ============================================
 // DOM Elements
@@ -25,6 +26,8 @@ const statusText = document.getElementById('statusText');
 // ============================================
 let isProcessing = false;
 let products = [];
+let cart = []; // { product, quantity }
+let selectedPaymentMethod = null;
 
 // ============================================
 // Initialize App
@@ -137,14 +140,22 @@ function addUserMessage(text) {
     addMessage(text, true);
 }
 
-function addProductResults(products) {
+// Track last search query for feedback
+let lastSearchQuery = '';
+
+function addProductResults(products, searchQuery = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message bot';
 
     let html = '<div class="message-content">';
 
     if (products.length === 0) {
-        html += '😅 Sorry, I couldn\'t find any products matching your request. Try asking for something else!';
+        lastSearchQuery = searchQuery;
+        html += `😅 It looks like we don't have "${searchQuery || 'that'}" yet!
+        
+<div class="feedback-prompt">
+    <p>Help us improve! <button class="feedback-link-btn" onclick="showFeedbackModal()">📝 Give us feedback</button></p>
+</div>`;
     } else {
         html += `🎯 Found ${products.length} product${products.length > 1 ? 's' : ''} for you! (sorted by best price)`;
         html += '<div class="product-list">';
@@ -154,13 +165,22 @@ function addProductResults(products) {
             const isUnavailable = product.available === false;
             html += `
                 <div class="product-card ${isBestOffer ? 'best-offer' : ''} ${isUnavailable ? 'unavailable' : ''}" 
-                     onclick="${isUnavailable ? '' : `selectProduct('${product.id}')`}"
                      style="${isUnavailable ? 'opacity: 0.6; cursor: not-allowed;' : ''}">
                     <div class="product-info">
                         <h4>${product.name} ${isUnavailable ? '<span style="color: #ef4444; font-size: 12px;">❌ Unavailable</span>' : ''}</h4>
                         <span class="seller">${product.seller}</span>
                     </div>
                     <div class="product-price" style="${isUnavailable ? 'background: #9ca3af;' : ''}">${isUnavailable ? 'Sold Out' : `Rp ${formatPrice(product.price)}`}</div>
+                    ${!isUnavailable ? `
+                    <div class="product-actions">
+                        <button class="action-btn add-cart-btn" onclick="event.stopPropagation(); addToCart('${product.id}')">
+                            🛒 Add to Cart
+                        </button>
+                        <button class="action-btn order-now-btn" onclick="event.stopPropagation(); orderNow('${product.id}')">
+                            ⚡ Order Now
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         });
@@ -199,36 +219,257 @@ function scrollToBottom() {
 }
 
 // ============================================
-// Product Selection - Save to Firestore for Sellers
+// Cart Management
 // ============================================
-async function selectProduct(productId) {
+function addToCart(productId) {
     const product = products.find(p => p.id === productId);
-    if (product) {
-        // Save order to Firestore for seller to see
-        try {
+    if (!product) return;
+
+    const existingItem = cart.find(item => item.product.id === productId);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ product, quantity: 1 });
+    }
+
+    updateCartBadge();
+    addBotMessage(`🛒 Added <strong>${product.name}</strong> to your cart!
+
+<button class="view-cart-btn" onclick="showCartModal()">View Cart (${getCartItemCount()} items)</button>`);
+    console.log('🛒 Cart updated:', cart);
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.product.id !== productId);
+    updateCartBadge();
+    renderCartItems();
+}
+
+function updateCartQuantity(productId, change) {
+    const item = cart.find(item => item.product.id === productId);
+    if (item) {
+        item.quantity += change;
+        if (item.quantity <= 0) {
+            removeFromCart(productId);
+        } else {
+            renderCartItems();
+        }
+    }
+    updateCartBadge();
+}
+
+function getCartTotal() {
+    return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+}
+
+function getCartItemCount() {
+    return cart.reduce((count, item) => count + item.quantity, 0);
+}
+
+function updateCartBadge() {
+    const cartCountEl = document.getElementById('cartCount');
+    if (cartCountEl) {
+        const count = getCartItemCount();
+        cartCountEl.textContent = count;
+        cartCountEl.style.display = count > 0 ? 'inline' : 'none';
+    }
+}
+
+function clearCart() {
+    cart = [];
+    updateCartBadge();
+}
+
+// ============================================
+// Cart Modal
+// ============================================
+function showCartModal() {
+    renderCartItems();
+    document.getElementById('cartModal').classList.add('active');
+}
+
+function hideCartModal() {
+    document.getElementById('cartModal').classList.remove('active');
+}
+
+function renderCartItems() {
+    const cartItemsEl = document.getElementById('cartItems');
+    const cartTotalEl = document.getElementById('cartTotal');
+
+    if (cart.length === 0) {
+        cartItemsEl.innerHTML = `
+            <div class="empty-cart">
+                <div class="empty-cart-icon">🛒</div>
+                <p>Your cart is empty</p>
+                <p style="font-size: 13px; margin-top: 8px;">Search for products and add them to cart</p>
+            </div>
+        `;
+        cartTotalEl.textContent = 'Rp 0';
+        return;
+    }
+
+    cartItemsEl.innerHTML = cart.map(item => `
+        <div class="cart-item">
+            <div class="cart-item-info">
+                <h4>${item.product.name}</h4>
+                <span class="cart-item-seller">🏪 ${item.product.seller}</span>
+                <span class="cart-item-price">Rp ${formatPrice(item.product.price)}</span>
+            </div>
+            <div class="cart-item-controls">
+                <button class="qty-btn" onclick="updateCartQuantity('${item.product.id}', -1)">−</button>
+                <span class="qty-value">${item.quantity}</span>
+                <button class="qty-btn" onclick="updateCartQuantity('${item.product.id}', 1)">+</button>
+            </div>
+            <button class="remove-btn" onclick="removeFromCart('${item.product.id}')">🗑️</button>
+        </div>
+    `).join('');
+
+    cartTotalEl.textContent = `Rp ${formatPrice(getCartTotal())}`;
+}
+
+// ============================================
+// Order Now (Direct Checkout)
+// ============================================
+function orderNow(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    // Clear cart and add just this product
+    cart = [{ product, quantity: 1 }];
+    updateCartBadge();
+
+    // Go directly to checkout
+    proceedToCheckout();
+}
+
+// ============================================
+// Checkout Flow
+// ============================================
+function proceedToCheckout() {
+    if (cart.length === 0) {
+        alert('Your cart is empty!');
+        return;
+    }
+
+    hideCartModal();
+    selectedPaymentMethod = null;
+
+    // Reset payment UI
+    document.getElementById('qrisDisplay').style.display = 'none';
+    document.getElementById('cashDisplay').style.display = 'none';
+    document.getElementById('paymentQris').classList.remove('selected');
+    document.getElementById('paymentCash').classList.remove('selected');
+    document.getElementById('confirmCheckoutBtn').disabled = true;
+
+    // Render checkout summary
+    renderCheckoutSummary();
+
+    document.getElementById('checkoutModal').classList.add('active');
+}
+
+function hideCheckoutModal() {
+    document.getElementById('checkoutModal').classList.remove('active');
+}
+
+function renderCheckoutSummary() {
+    const summaryEl = document.getElementById('checkoutSummary');
+
+    summaryEl.innerHTML = `
+        <h4>Order Summary</h4>
+        <div class="checkout-items">
+            ${cart.map(item => `
+                <div class="checkout-item">
+                    <span>${item.product.name} × ${item.quantity}</span>
+                    <span>Rp ${formatPrice(item.product.price * item.quantity)}</span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="checkout-total">
+            <strong>Total</strong>
+            <strong>Rp ${formatPrice(getCartTotal())}</strong>
+        </div>
+    `;
+}
+
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+
+    // Update UI
+    document.getElementById('paymentQris').classList.toggle('selected', method === 'qris');
+    document.getElementById('paymentCash').classList.toggle('selected', method === 'cash');
+
+    // Show appropriate display
+    document.getElementById('qrisDisplay').style.display = method === 'qris' ? 'block' : 'none';
+    document.getElementById('cashDisplay').style.display = method === 'cash' ? 'block' : 'none';
+
+    // Generate order number (used for both display and saving)
+    if (!window.currentOrderNumber) {
+        window.currentOrderNumber = Math.floor(1000 + Math.random() * 9000);
+    }
+    document.getElementById('tempOrderNumber').textContent = window.currentOrderNumber;
+
+    // Enable confirm button
+    document.getElementById('confirmCheckoutBtn').disabled = false;
+}
+
+async function confirmCheckout() {
+    if (!selectedPaymentMethod || cart.length === 0) return;
+
+    const confirmBtn = document.getElementById('confirmCheckoutBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processing...';
+
+    try {
+        // Get the order number
+        const orderNumber = window.currentOrderNumber || Math.floor(1000 + Math.random() * 9000);
+
+        // Save each cart item as an order
+        for (const item of cart) {
             await db.collection('orders').add({
-                productId: product.id,
-                productName: product.name,
-                seller: product.seller,
-                price: product.price,
-                category: product.category,
+                orderId: orderNumber,
+                productId: item.product.id,
+                productName: item.product.name,
+                seller: item.product.seller,
+                price: item.product.price,
+                quantity: item.quantity,
+                totalPrice: item.product.price * item.quantity,
+                category: item.product.category,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 status: 'pending',
+                paymentMethod: selectedPaymentMethod,
                 buyerSession: getBuyerSessionId()
             });
-            console.log('✅ Order saved to Firestore');
-        } catch (error) {
-            console.error('Failed to save order:', error);
         }
 
-        addBotMessage(`✅ Great choice! You selected <strong>${product.name}</strong> from <strong>${product.seller}</strong> for <strong>Rp ${formatPrice(product.price)}</strong>.
+        // Reset order number for next checkout
+        window.currentOrderNumber = null;
 
-📢 The seller has been notified!
+        console.log('✅ All orders saved to Firestore');
 
-Would you like to:
-• Order another product
-• See more options
-• Ask about something else`);
+        // Clear cart and close modal
+        const totalAmount = getCartTotal();
+        const itemCount = getCartItemCount();
+        clearCart();
+        hideCheckoutModal();
+
+        // Show success message
+        addBotMessage(`✅ <strong>Order Confirmed!</strong>
+
+💰 Total: <strong>Rp ${formatPrice(totalAmount)}</strong>
+💳 Payment: <strong>${selectedPaymentMethod === 'qris' ? 'QRIS' : 'Cash'}</strong>
+📦 Items: ${itemCount} item${itemCount > 1 ? 's' : ''}
+
+${selectedPaymentMethod === 'qris'
+                ? '📱 Please complete your payment via QRIS'
+                : '💵 Please pay at the counter when your order is ready'}
+
+📢 The seller has been notified! Check "My Orders" to track your order.`);
+
+    } catch (error) {
+        console.error('Failed to save orders:', error);
+        alert('Failed to process order. Please try again.');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirm Order';
     }
 }
 
@@ -250,16 +491,14 @@ function formatPrice(price) {
 }
 
 // ============================================
-// Gemini AI Integration
+// Groq AI Integration
 // ============================================
-async function processWithGemini(userMessage) {
-    // Create a prompt that helps Gemini understand the context
+async function processWithGroq(userMessage) {
+    // Create a system prompt that helps Groq understand the context
     const systemPrompt = `You are a shopping assistant for an Indonesian food marketplace. Your job is to understand what the user wants and extract search keywords.
 
 Available product categories: nasi padang, snack, minuman (drinks), makanan (food)
 Available tags: sweet, manis, cheap, murah, spicy, chicken, ayam, beef, nasi, drink, cold, hot, healthy, vegetable
-
-User message: "${userMessage}"
 
 Respond with a JSON object containing:
 1. "intent": one of "search", "greeting", "help", "order", "unknown"
@@ -274,30 +513,29 @@ Examples:
 IMPORTANT: Only respond with the JSON object, nothing else.`;
 
     try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        const response = await fetch(GROQ_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: systemPrompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.3,
-                    topK: 1,
-                    topP: 1,
-                    maxOutputTokens: 256,
-                }
+                model: GROQ_MODEL,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.3,
+                max_tokens: 256
             })
         });
 
         if (!response.ok) {
-            throw new Error('Gemini API request failed');
+            throw new Error('Groq API request failed');
         }
 
         const data = await response.json();
-        const text = data.candidates[0].content.parts[0].text;
+        const text = data.choices[0].message.content;
 
         // Parse the JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -307,7 +545,7 @@ IMPORTANT: Only respond with the JSON object, nothing else.`;
 
         throw new Error('Invalid response format');
     } catch (error) {
-        console.error('Gemini API error:', error);
+        console.error('Groq API error:', error);
         // Fallback to simple keyword extraction
         return fallbackProcessing(userMessage);
     }
@@ -408,7 +646,7 @@ async function handleUserMessage() {
 
     try {
         // Process with AI
-        const result = await processWithGemini(message);
+        const result = await processWithGroq(message);
 
         hideTypingIndicator();
 
@@ -416,7 +654,7 @@ async function handleUserMessage() {
             // Search for products
             const searchQuery = result.keywords.join(' ');
             const foundProducts = await searchProducts(searchQuery);
-            addProductResults(foundProducts.slice(0, 5)); // Show top 5
+            addProductResults(foundProducts.slice(0, 5), searchQuery); // Show top 5
         } else if (result.response) {
             // Show AI response
             addBotMessage(result.response);
@@ -424,9 +662,9 @@ async function handleUserMessage() {
             // Search with original message
             const foundProducts = await searchProducts(message);
             if (foundProducts.length > 0) {
-                addProductResults(foundProducts.slice(0, 5));
+                addProductResults(foundProducts.slice(0, 5), message);
             } else {
-                addBotMessage("I'm not sure what you're looking for. Try asking for specific foods like 'nasi padang' or 'something sweet'!");
+                addProductResults([], message);
             }
         }
 
@@ -684,3 +922,49 @@ async function sendChatMessage() {
 setTimeout(() => {
     listenToMyOrders();
 }, 500);
+
+// ============================================
+// FEEDBACK FUNCTIONALITY
+// ============================================
+
+function showFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    const searchQueryEl = document.getElementById('feedbackSearchQuery');
+
+    if (searchQueryEl) {
+        searchQueryEl.textContent = lastSearchQuery || 'your request';
+    }
+
+    modal.classList.add('active');
+    document.getElementById('feedbackText').focus();
+}
+
+function hideFeedbackModal() {
+    document.getElementById('feedbackModal').classList.remove('active');
+    document.getElementById('feedbackText').value = '';
+}
+
+async function submitFeedback() {
+    const feedbackText = document.getElementById('feedbackText').value.trim();
+
+    if (!feedbackText) {
+        alert('Please enter your feedback.');
+        return;
+    }
+
+    try {
+        await db.collection('feedback').add({
+            searchQuery: lastSearchQuery || '',
+            text: feedbackText,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            buyerSession: getBuyerSessionId()
+        });
+
+        console.log('✅ Feedback submitted');
+        hideFeedbackModal();
+        addBotMessage('🙏 Thank you for your feedback! We appreciate you helping us improve.');
+    } catch (error) {
+        console.error('Failed to submit feedback:', error);
+        alert('Failed to submit feedback. Please try again.');
+    }
+}

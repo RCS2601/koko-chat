@@ -22,6 +22,8 @@
             </div>
             <p class="tagline">Chat with us to find your perfect product</p>
             <div class="header-links">
+                <button class="cart-btn" onclick="showCartModal()">🛒 Cart <span id="cartCount"
+                        class="cart-count">0</span></button>
                 <button class="my-orders-btn" onclick="showOrdersModal()">📦 My Orders <span id="orderCount"
                         class="order-count">0</span></button>
                 <a href="seller.html" class="seller-link">👨‍💼 Seller Dashboard →</a>
@@ -79,6 +81,104 @@
                 <div class="chat-input-area">
                     <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
                     <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Modal -->
+        <div class="modal" id="feedbackModal">
+            <div class="modal-content feedback-modal-content">
+                <div class="modal-header">
+                    <h3>📝 Give Us Feedback</h3>
+                    <button class="close-modal" onclick="hideFeedbackModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="feedback-context">You searched for: <strong id="feedbackSearchQuery">...</strong></p>
+                    <textarea id="feedbackText"
+                        placeholder="Tell us what you'd like to see! e.g., 'Please add sushi options' or 'I want more vegetarian food'"
+                        rows="4"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" onclick="hideFeedbackModal()">Cancel</button>
+                    <button class="confirm-btn" onclick="submitFeedback()">Submit Feedback</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Modal -->
+        <div class="modal" id="cartModal">
+            <div class="modal-content cart-modal-content">
+                <div class="modal-header">
+                    <h3>🛒 Your Cart</h3>
+                    <button class="close-modal" onclick="hideCartModal()">✕</button>
+                </div>
+                <div class="modal-body cart-items" id="cartItems">
+                    <!-- Cart items will be rendered here -->
+                </div>
+                <div class="cart-footer">
+                    <div class="cart-total">
+                        <span>Total:</span>
+                        <span id="cartTotal">Rp 0</span>
+                    </div>
+                    <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout Modal -->
+        <div class="modal" id="checkoutModal">
+            <div class="modal-content checkout-modal-content">
+                <div class="modal-header">
+                    <h3>💳 Checkout</h3>
+                    <button class="close-modal" onclick="hideCheckoutModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="checkout-summary" id="checkoutSummary">
+                        <!-- Order summary will be rendered here -->
+                    </div>
+
+                    <div class="payment-section">
+                        <h4>Select Payment Method</h4>
+                        <div class="payment-options">
+                            <div class="payment-option" id="paymentQris" onclick="selectPaymentMethod('qris')">
+                                <div class="payment-icon">📱</div>
+                                <div class="payment-info">
+                                    <strong>QRIS</strong>
+                                    <span>Scan QR code to pay</span>
+                                </div>
+                            </div>
+                            <div class="payment-option" id="paymentCash" onclick="selectPaymentMethod('cash')">
+                                <div class="payment-icon">💵</div>
+                                <div class="payment-info">
+                                    <strong>Cash</strong>
+                                    <span>Pay at counter</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QRIS Display (hidden by default) -->
+                    <div class="qris-display" id="qrisDisplay" style="display: none;">
+                        <div class="qris-code">
+                            <div class="qris-placeholder">
+                                <div class="qr-pattern"></div>
+                                <p>QRIS</p>
+                            </div>
+                        </div>
+                        <p class="qris-instruction">Scan this QR code with your mobile banking or e-wallet app</p>
+                    </div>
+
+                    <!-- Cash Display (hidden by default) -->
+                    <div class="cash-display" id="cashDisplay" style="display: none;">
+                        <div class="cash-icon">🧾</div>
+                        <p>Please pay at the counter when your order is ready</p>
+                        <p class="cash-order-number">Order #<span id="tempOrderNumber">---</span></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" onclick="hideCheckoutModal()">Back</button>
+                    <button class="confirm-btn" id="confirmCheckoutBtn" onclick="confirmCheckout()" disabled>Confirm
+                        Order</button>
                 </div>
             </div>
         </div>

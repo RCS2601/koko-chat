@@ -30,6 +30,7 @@
             <div class="section-header">
                 <h2>👥 All Sellers</h2>
                 <div class="header-actions">
+                    <button class="feedback-btn" onclick="showFeedbackListModal()">📝 See Feedback</button>
                     <button class="sync-btn" onclick="syncToNewStructure()">🔄 Sync Sample Data</button>
                     <button class="add-seller-btn" onclick="showAddSellerModal()">➕ Add New Seller</button>
                 </div>
@@ -156,6 +157,19 @@
                 <div class="chat-input-area">
                     <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
                     <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback List Modal -->
+        <div class="modal" id="feedbackListModal">
+            <div class="modal-content feedback-list-modal-content">
+                <div class="modal-header">
+                    <h3>📝 User Feedback</h3>
+                    <button class="close-modal" onclick="hideFeedbackListModal()">✕</button>
+                </div>
+                <div class="modal-body feedback-list" id="feedbackList">
+                    <!-- Feedback items will be rendered here -->
                 </div>
             </div>
         </div>
