@@ -1,0 +1,10 @@
+# User requested ignores
+ai_memory/
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
+
+# Dependencies (if added later)
+node_modules/
