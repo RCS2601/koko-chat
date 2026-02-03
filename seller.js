@@ -251,15 +251,39 @@ function renderSellersGrid() {
 
         const card = document.createElement('div');
         card.className = 'seller-card';
-        card.onclick = () => viewSeller(seller.id, seller.name);
+
+        // Escape seller name for safe use in HTML
+        const escapedName = seller.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
         card.innerHTML = `
-            <div class="seller-card-icon">🏪${badgeHTML}</div>
+            <div class="seller-card-header">
+                <div class="seller-card-icon">🏪${badgeHTML}</div>
+                <button class="seller-delete-btn" data-seller-id="${seller.id}" data-seller-name="${escapedName}" title="Delete Seller">🗑️</button>
+            </div>
             <h3 class="seller-card-name">${seller.name}</h3>
             <div class="seller-card-stats">
                 <span>📦 ${seller.productCount || 0} products</span>
                 <span>🏷️ ${seller.category || 'General'}</span>
             </div>
         `;
+
+        // Add click handler for card (view seller)
+        const cardIcon = card.querySelector('.seller-card-icon');
+        const cardName = card.querySelector('.seller-card-name');
+        const cardStats = card.querySelector('.seller-card-stats');
+
+        [cardIcon, cardName, cardStats].forEach(el => {
+            el.style.cursor = 'pointer';
+            el.onclick = () => viewSeller(seller.id, seller.name);
+        });
+
+        // Add click handler for delete button
+        const deleteBtn = card.querySelector('.seller-delete-btn');
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteSeller(seller.id, seller.name);
+        };
+
         sellersGrid.appendChild(card);
     });
 
@@ -350,6 +374,61 @@ async function addSeller() {
     } catch (error) {
         console.error('Failed to add seller:', error);
         alert('Failed to add seller. Please try again.');
+    }
+}
+
+// ============================================
+// Delete Seller (with all products)
+// ============================================
+async function deleteSeller(sellerId, sellerName) {
+    console.log('🗑️ deleteSeller called:', sellerId, sellerName);
+
+    if (!confirm(`⚠️ Are you sure you want to delete "${sellerName}"?\n\nThis will also delete ALL products for this seller. This action cannot be undone!`)) {
+        console.log('❌ Delete cancelled by user');
+        return;
+    }
+
+    try {
+        showLoading('Deleting seller...');
+
+        // First, delete all products in the seller's subcollection
+        const productsSnapshot = await db.collection('sellers').doc(sellerId)
+            .collection('products').get();
+
+        const deleteProductPromises = productsSnapshot.docs.map(doc =>
+            doc.ref.delete()
+        );
+        await Promise.all(deleteProductPromises);
+
+        console.log(`🗑️ Deleted ${productsSnapshot.size} products for seller: ${sellerName}`);
+
+        // Delete all orders for this seller
+        const ordersSnapshot = await db.collection('orders')
+            .where('seller', '==', sellerName)
+            .get();
+
+        const deleteOrderPromises = ordersSnapshot.docs.map(doc =>
+            doc.ref.delete()
+        );
+        await Promise.all(deleteOrderPromises);
+
+        console.log(`🗑️ Deleted ${ordersSnapshot.size} orders for seller: ${sellerName}`);
+
+        // Finally, delete the seller document
+        await db.collection('sellers').doc(sellerId).delete();
+
+        console.log(`✅ Seller deleted: ${sellerName}`);
+
+        // Clear viewed status for this seller
+        clearViewedSeller(sellerName);
+
+        hideLoading();
+        alert(`Seller "${sellerName}" has been deleted successfully.`);
+
+    } catch (error) {
+        hideLoading();
+        console.error('Failed to delete seller:', error);
+        alert('Failed to delete seller. Please try again.');
     }
 }
 
@@ -905,22 +984,31 @@ function showFeedbackListModal() {
         feedbackList.innerHTML = `
             <div class="empty-feedback">
                 <div class="empty-feedback-icon">📝</div>
-                <p>No feedback yet!</p>
-                <p style="font-size: 13px; margin-top: 8px;">Feedback from buyers will appear here</p>
+                <p>Belum ada feedback!</p>
+                <p style="font-size: 13px; margin-top: 8px;">Feedback dari pembeli akan muncul di sini</p>
             </div>
         `;
     } else {
         feedbackList.innerHTML = allFeedback.map(feedback => {
             const timestamp = feedback.timestamp ? formatTimestamp(feedback.timestamp.toDate()) : 'Just now';
+            const typeLabels = {
+                'missing_product': '🛒 Produk Belum Ada',
+                'wrong_answer': '🤔 Koko Salah Paham',
+                'suggestion': '💡 Saran'
+            };
+            const typeLabel = typeLabels[feedback.type] || '📝 Feedback';
+            const statusClass = feedback.status === 'unread' ? 'unread' : 'read';
+
             return `
-                <div class="feedback-item">
+                <div class="feedback-item ${statusClass}">
                     <div class="feedback-item-header">
-                        <span class="feedback-search-query">🔍 "${feedback.searchQuery || 'General'}"</span>
+                        <span class="feedback-type-badge">${typeLabel}</span>
                         <span class="feedback-time">${timestamp}</span>
                     </div>
-                    <div class="feedback-text">${feedback.text}</div>
+                    ${feedback.searchQuery ? `<div class="feedback-search-query">🔍 Pencarian: "${feedback.searchQuery}"</div>` : ''}
+                    <div class="feedback-text">${feedback.message || feedback.text || 'No message'}</div>
                     <button class="feedback-delete-btn" onclick="deleteFeedback('${feedback.id}')">
-                        ✓ Mark as Done
+                        ✓ Tandai Selesai
                     </button>
                 </div>
             `;

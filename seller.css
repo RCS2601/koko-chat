@@ -105,9 +105,37 @@ body {
     box-shadow: var(--shadow-strong);
 }
 
+.seller-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
 .seller-card-icon {
     font-size: 48px;
-    margin-bottom: 12px;
+    cursor: pointer;
+    position: relative;
+}
+
+.seller-delete-btn {
+    background: #fee2e2;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.seller-card:hover .seller-delete-btn {
+    opacity: 1;
+}
+
+.seller-delete-btn:hover {
+    background: #fecaca;
+    transform: scale(1.1);
 }
 
 .seller-card-name {
@@ -115,6 +143,7 @@ body {
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 10px;
+    cursor: pointer;
 }
 
 .seller-card-stats {
@@ -123,6 +152,7 @@ body {
     gap: 4px;
     font-size: 12px;
     color: var(--text-secondary);
+    cursor: pointer;
 }
 
 /* Add Seller Card */
@@ -1163,10 +1193,27 @@ body {
     margin-bottom: 10px;
 }
 
-.feedback-search-query {
-    font-size: 14px;
+.feedback-type-badge {
+    font-size: 12px;
     font-weight: 600;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    color: white;
+    border-radius: 12px;
+}
+
+.feedback-item.unread {
+    border-left: 4px solid #8b5cf6;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%);
+}
+
+.feedback-search-query {
+    font-size: 13px;
     color: #8b5cf6;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: 6px;
 }
 
 .feedback-time {

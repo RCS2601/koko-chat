@@ -28,6 +28,8 @@ let isProcessing = false;
 let products = [];
 let cart = []; // { product, quantity }
 let selectedPaymentMethod = null;
+let conversationHistory = []; // Store conversation context for AI
+const MAX_HISTORY = 10; // Keep last 10 messages for context
 
 // ============================================
 // Initialize App
@@ -46,13 +48,16 @@ async function initApp() {
         // Update status
         updateStatus('Ready! Ask me anything', true);
 
-        // Show welcome message
-        addBotMessage(`👋 Welcome to Ultimate Store! I'm here to help you find products. You can ask me things like:
+        // Show welcome message - Koko introduces himself
+        addBotMessage(`Eh, ada tamu! 👋 Selamat datang di Ultimate Store, Bos!
 
-• "I want nasi padang"
-• "Show me something sweet and cheap"
-• "What drinks do you have?"
-• "Find the cheapest food"`);
+Saya **Koko**, asisten belanja paling kece se-marketplace ini. Mau nyari apa hari ini?
+
+• Makanan berat? Siap.
+• Camilan buat nemenin overthinking? Ada.
+• Minuman buat healing? Banyak.
+
+Langsung bilang aja mau apa, nanti saya cariin yang terbaik. Atau kalau bingung, ketik "surprise me" dan kita gacha bareng! 🎰`);
 
         console.log('✅ App initialized with', products.length, 'products');
     } catch (error) {
@@ -143,7 +148,7 @@ function addUserMessage(text) {
 // Track last search query for feedback
 let lastSearchQuery = '';
 
-function addProductResults(products, searchQuery = '') {
+function addProductResults(products, searchQuery = '', productComment = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message bot';
 
@@ -151,13 +156,17 @@ function addProductResults(products, searchQuery = '') {
 
     if (products.length === 0) {
         lastSearchQuery = searchQuery;
-        html += `😅 It looks like we don't have "${searchQuery || 'that'}" yet!
-        
+        html += `Waduh, "${searchQuery || 'itu'}" kayaknya belum ada di database saya, Bos. 😅
+
+Mungkin typo? Atau emang lagi nyari sesuatu yang super rare?
+
 <div class="feedback-prompt">
-    <p>Help us improve! <button class="feedback-link-btn" onclick="showFeedbackModal()">📝 Give us feedback</button></p>
+    <p>Kalau emang harusnya ada, kasih tau saya dong! <button class="feedback-link-btn" onclick="showFeedbackModal()">📝 Kirim Feedback</button></p>
 </div>`;
     } else {
-        html += `🎯 Found ${products.length} product${products.length > 1 ? 's' : ''} for you! (sorted by best price)`;
+        // Use Koko's productComment if available, otherwise generic
+        const comment = productComment || `Nih ${products.length} pilihan buat Bos. Yang paling worth it ada di atas! 👆`;
+        html += `🎯 ${comment}`;
         html += '<div class="product-list">';
 
         products.forEach((product, index) => {
@@ -190,6 +199,21 @@ function addProductResults(products, searchQuery = '') {
 
     html += '</div>';
     messageDiv.innerHTML = html;
+    chatContainer.appendChild(messageDiv);
+    scrollToBottom();
+}
+
+// Add feedback prompt as separate message (for confused intent)
+function addFeedbackPrompt(searchQuery) {
+    lastSearchQuery = searchQuery;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot';
+    messageDiv.innerHTML = `
+        <div class="message-content feedback-prompt-msg">
+            <p>💡 Kalau ada yang kurang jelas atau saya salah paham, kasih tau ya!</p>
+            <button class="feedback-link-btn" onclick="showFeedbackModal()">📝 Kirim Feedback</button>
+        </div>
+    `;
     chatContainer.appendChild(messageDiv);
     scrollToBottom();
 }
@@ -235,7 +259,7 @@ function addToCart(productId) {
     updateCartBadge();
     addBotMessage(`🛒 Added <strong>${product.name}</strong> to your cart!
 
-<button class="view-cart-btn" onclick="showCartModal()">View Cart (${getCartItemCount()} items)</button>`);
+<button class="view-cart-btn" onclick="goToCart()">View Cart (${getCartItemCount()} items)</button>`);
     console.log('🛒 Cart updated:', cart);
 }
 
@@ -267,11 +291,20 @@ function getCartItemCount() {
 }
 
 function updateCartBadge() {
+    const count = getCartItemCount();
+
+    // Update header cart count (if exists)
     const cartCountEl = document.getElementById('cartCount');
     if (cartCountEl) {
-        const count = getCartItemCount();
         cartCountEl.textContent = count;
         cartCountEl.style.display = count > 0 ? 'inline' : 'none';
+    }
+
+    // Update bottom nav cart badge
+    const cartBadge = document.getElementById('cartBadge');
+    if (cartBadge) {
+        cartBadge.textContent = count;
+        cartBadge.style.display = count > 0 ? 'flex' : 'none';
     }
 }
 
@@ -281,15 +314,36 @@ function clearCart() {
 }
 
 // ============================================
-// Cart Modal
+// Cart Navigation
 // ============================================
 function showCartModal() {
-    renderCartItems();
-    document.getElementById('cartModal').classList.add('active');
+    // Legacy function - redirect to cart view
+    goToCart();
+}
+
+function goToCart() {
+    // Navigate to cart view using view-based navigation
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.getElementById('navCart').classList.add('active');
+
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.getElementById('cartView').classList.add('active');
+
+    currentTab = 'cart';
+    renderCartView();
+    updateChatNavAppearance();
 }
 
 function hideCartModal() {
-    document.getElementById('cartModal').classList.remove('active');
+    // Legacy function - now just goes back to chat
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    document.getElementById('navChat').classList.add('active');
+
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.getElementById('chatView').classList.add('active');
+
+    currentTab = 'chat';
+    updateChatModeDisplay();
 }
 
 function renderCartItems() {
@@ -494,25 +548,143 @@ function formatPrice(price) {
 // Groq AI Integration
 // ============================================
 async function processWithGroq(userMessage) {
-    // Create a system prompt that helps Groq understand the context
-    const systemPrompt = `You are a shopping assistant for an Indonesian food marketplace. Your job is to understand what the user wants and extract search keywords.
+    // Build detailed product catalog for AI with categories
+    const productList = products.slice(0, 50).map(p => ({
+        name: p.name,
+        category: p.category || 'uncategorized',
+        price: p.price
+    }));
 
-Available product categories: nasi padang, snack, minuman (drinks), makanan (food)
-Available tags: sweet, manis, cheap, murah, spicy, chicken, ayam, beef, nasi, drink, cold, hot, healthy, vegetable
+    const productCatalog = productList.length > 0
+        ? `\n\nAVAILABLE PRODUCTS (you MUST choose from these EXACT names):\n${productList.map(p => `- "${p.name}" (${p.category}, Rp${p.price})`).join('\n')}\n`
+        : '';
 
-Respond with a JSON object containing:
-1. "intent": one of "search", "greeting", "help", "order", "unknown"
-2. "keywords": array of search keywords extracted from the message (in Indonesian or English)
-3. "response": a friendly response message if intent is not "search"
+    // Language-aware Koko personality
+    const isEnglish = currentLanguage === 'en';
 
-Examples:
-- "I want nasi padang" -> {"intent": "search", "keywords": ["nasi", "padang"]}
-- "something sweet and cheap" -> {"intent": "search", "keywords": ["sweet", "manis", "cheap", "murah"]}
-- "hello" -> {"intent": "greeting", "keywords": [], "response": "Hello! How can I help you find products today?"}
+    // Enhanced system prompt with conversation memory and not_found intent
+    const systemPrompt = isEnglish
+        ? `You are "Koko", the Cheeky Connoisseur - a witty shopping assistant for an Indonesian food marketplace.
+${productCatalog}
+PERSONALITY:
+- Deadpan snarky but helpful like a real waiter/waitress
+- Use casual English slang: "Yo", "Bruh", "Lowkey", "No cap", "Valid"
+- Keep responses SHORT (2-3 sentences max)
+- RESPOND IN ENGLISH ONLY
+- Remember previous messages for context
 
-IMPORTANT: Only respond with the JSON object, nothing else.`;
+RESPONSE FORMAT (JSON):
+{
+    "intent": "search" | "greeting" | "help" | "chat" | "not_found" | "followup",
+    "selectedProducts": ["Exact Product Name 1", "Exact Product Name 2"],
+    "response": "Your cheeky response IN ENGLISH",
+    "productComment": "optional comment about products IN ENGLISH",
+    "notFoundItem": "the item user asked for that we don't have"
+}
+
+INTENTS:
+- "search": User wants a product we have → return matching products
+- "not_found": User wants something we DON'T have (burger, sushi, pizza, etc.) → apologize and suggest alternatives
+- "followup": User asks follow-up about previous request (like "what's similar?", "anything else?")
+- "greeting": User says hi/hello
+- "chat": General conversation
+- "help": User needs help
+
+CRITICAL RULES:
+1. ONLY return product names that EXACTLY match the menu above
+2. If user asks for something NOT in the menu (burger, sushi, pizza, ramen, etc.):
+   - Use intent "not_found"
+   - Set notFoundItem to what they asked for
+   - Suggest similar FOOD items if they asked for food, DRINKS if they asked for drinks
+   - Be apologetic but offer alternatives
+3. If user asks "what's similar?" or "anything else?" → Use intent "followup" and check the PREVIOUS message context
+4. Maximum 5 products in selectedProducts
+5. For category-only requests (drinks, food, snacks) → pick 3-5 items from that category
+
+EXAMPLES:
+
+User: "I want burger"
+Response: {"intent": "not_found", "selectedProducts": ["Nasi Goreng Spesial", "Mie Ayam"], "response": "Burger? Sorry bruh, we don't have that here! But we got some solid filling options.", "productComment": "Check these out instead! 🍽️", "notFoundItem": "burger"}
+
+User: "what's similar then?"
+Response: {"intent": "followup", "selectedProducts": ["Nasi Goreng Spesial", "Ayam Bakar"], "response": "If you wanted something filling like a burger, these might hit the spot!", "productComment": "Hearty Indonesian dishes! 💪"}
+
+User: "do you have sushi?"
+Response: {"intent": "not_found", "selectedProducts": [], "response": "No sushi here, we're all about Indonesian food! But yo, we got amazing stuff.", "productComment": "Want me to recommend something?", "notFoundItem": "sushi"}
+
+User: "I want coffee"
+Response: {"intent": "search", "selectedProducts": ["Kopi Susu"], "response": "Coffee? Valid choice! Here's what we got.", "productComment": "This one's a fan favorite! ☕"}
+
+IMPORTANT:
+- ALWAYS respond with valid JSON
+- ALWAYS respond in ENGLISH
+- Use context from previous messages to give better recommendations
+- If item not found, ALWAYS suggest alternatives based on what they wanted`
+        : `You are "Koko", the Cheeky Connoisseur - a witty shopping assistant for an Indonesian food marketplace.
+${productCatalog}
+PERSONALITY:
+- Deadpan snarky but helpful like a real waiter/waitress
+- Use Indonesian slang: "Waduh", "Jujurly", "Bos", "Valid", "No debat"
+- Keep responses SHORT (2-3 sentences max)
+- RESPOND IN INDONESIAN ONLY
+- Remember previous messages for context
+
+RESPONSE FORMAT (JSON):
+{
+    "intent": "search" | "greeting" | "help" | "chat" | "not_found" | "followup",
+    "selectedProducts": ["Exact Product Name 1", "Exact Product Name 2"],
+    "response": "Your cheeky response IN INDONESIAN",
+    "productComment": "optional comment about products IN INDONESIAN",
+    "notFoundItem": "the item user asked for that we don't have"
+}
+
+INTENTS:
+- "search": User wants a product we have → return matching products
+- "not_found": User wants something we DON'T have (burger, sushi, pizza, etc.) → apologize and suggest alternatives
+- "followup": User asks follow-up about previous request (like "yang mirip apa?", "ada yang lain?")
+- "greeting": User says hi/hello
+- "chat": General conversation
+- "help": User needs help
+
+CRITICAL RULES:
+1. ONLY return product names that EXACTLY match the menu above
+2. If user asks for something NOT in the menu (burger, sushi, pizza, ramen, etc.):
+   - Use intent "not_found"
+   - Set notFoundItem to what they asked for
+   - Suggest similar FOOD items if they asked for food, DRINKS if they asked for drinks
+   - Be apologetic but offer alternatives
+3. If user asks "yang mirip apa?" or "ada yang lain?" → Use intent "followup" and check the PREVIOUS message context
+4. Maximum 5 products in selectedProducts
+5. For category-only requests (minuman, makanan, snack) → pick 3-5 items from that category
+
+EXAMPLES:
+
+User: "burger dong"
+Response: {"intent": "not_found", "selectedProducts": ["Nasi Goreng Spesial", "Mie Ayam"], "response": "Waduh, burger gak ada, Bos! Tapi kita punya makanan yang bikin kenyang juga nih.", "productComment": "Coba yang ini deh! 🍽️", "notFoundItem": "burger"}
+
+User: "yang mirip apa dong?"
+Response: {"intent": "followup", "selectedProducts": ["Nasi Goreng Spesial", "Ayam Bakar"], "response": "Kalau mau yang mengenyangkan kayak burger, ini cocok, Bos!", "productComment": "Mantap buat perut lapar! 💪"}
+
+User: "ada sushi gak?"
+Response: {"intent": "not_found", "selectedProducts": [], "response": "Sushi gak ada, Bos! Kita fokus makanan Indonesia. Tapi ada yang enak lho!", "productComment": "Mau saya rekomendasiin?", "notFoundItem": "sushi"}
+
+User: "mau kopi"
+Response: {"intent": "search", "selectedProducts": ["Kopi Susu"], "response": "Kopi? Ah, sesama pecinta kafein. Valid, Bos!", "productComment": "Ini kopi favorit! ☕"}
+
+IMPORTANT:
+- ALWAYS respond with valid JSON
+- ALWAYS respond in INDONESIAN
+- Use context from previous messages to give better recommendations
+- If item not found, ALWAYS suggest alternatives based on what they wanted`;
 
     try {
+        // Build messages array with conversation history for context
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory.slice(-MAX_HISTORY), // Include recent history
+            { role: 'user', content: userMessage }
+        ];
+
         const response = await fetch(GROQ_API_URL, {
             method: 'POST',
             headers: {
@@ -521,12 +693,9 @@ IMPORTANT: Only respond with the JSON object, nothing else.`;
             },
             body: JSON.stringify({
                 model: GROQ_MODEL,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userMessage }
-                ],
-                temperature: 0.3,
-                max_tokens: 256
+                messages: messages,
+                temperature: 0.4,
+                max_tokens: 300
             })
         });
 
@@ -540,7 +709,18 @@ IMPORTANT: Only respond with the JSON object, nothing else.`;
         // Parse the JSON response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            const result = JSON.parse(jsonMatch[0]);
+
+            // Add to conversation history
+            conversationHistory.push({ role: 'user', content: userMessage });
+            conversationHistory.push({ role: 'assistant', content: result.response });
+
+            // Trim history if too long
+            if (conversationHistory.length > MAX_HISTORY * 2) {
+                conversationHistory = conversationHistory.slice(-MAX_HISTORY * 2);
+            }
+
+            return result;
         }
 
         throw new Error('Invalid response format');
@@ -650,16 +830,77 @@ async function handleUserMessage() {
 
         hideTypingIndicator();
 
-        if (result.intent === 'search' && result.keywords.length > 0) {
-            // Search for products
+        // Check for selectedProducts (new approach - AI picks exact products)
+        if (result.intent === 'search' && result.selectedProducts && result.selectedProducts.length > 0) {
+            // Show Koko's pre-search response if available
+            if (result.response) {
+                addBotMessage(result.response);
+            }
+
+            // Filter products by exact name match (AI already selected them)
+            const selectedNames = result.selectedProducts.map(n => n.toLowerCase());
+            const foundProducts = products.filter(p =>
+                selectedNames.includes(p.name.toLowerCase())
+            );
+
+            // Pass Koko's product comment to the results
+            const searchTerm = result.selectedProducts.join(', ');
+            addProductResults(foundProducts.slice(0, 5), searchTerm, result.productComment);
+        }
+        // Handle not_found intent - item doesn't exist, show alternatives + feedback
+        else if (result.intent === 'not_found') {
+            // Show Koko's apologetic response
+            addBotMessage(result.response);
+
+            // Show alternative products if any
+            if (result.selectedProducts && result.selectedProducts.length > 0) {
+                const selectedNames = result.selectedProducts.map(n => n.toLowerCase());
+                const altProducts = products.filter(p =>
+                    selectedNames.includes(p.name.toLowerCase())
+                );
+                if (altProducts.length > 0) {
+                    addProductResults(altProducts.slice(0, 5), result.notFoundItem || message, result.productComment);
+                }
+            }
+
+            // Always show feedback prompt for not_found items
+            addFeedbackPrompt(result.notFoundItem || message);
+        }
+        // Handle followup intent - contextual follow-up questions
+        else if (result.intent === 'followup') {
+            // Show Koko's contextual response
+            if (result.response) {
+                addBotMessage(result.response);
+            }
+
+            // Show suggested products if any
+            if (result.selectedProducts && result.selectedProducts.length > 0) {
+                const selectedNames = result.selectedProducts.map(n => n.toLowerCase());
+                const foundProducts = products.filter(p =>
+                    selectedNames.includes(p.name.toLowerCase())
+                );
+                if (foundProducts.length > 0) {
+                    addProductResults(foundProducts.slice(0, 5), 'recommendations', result.productComment);
+                }
+            }
+        }
+        // Fallback to old keyword-based search if selectedProducts not present
+        else if (result.intent === 'search' && result.keywords && result.keywords.length > 0) {
+            if (result.response) {
+                addBotMessage(result.response);
+            }
             const searchQuery = result.keywords.join(' ');
             const foundProducts = await searchProducts(searchQuery);
-            addProductResults(foundProducts.slice(0, 5), searchQuery); // Show top 5
+            addProductResults(foundProducts.slice(0, 5), searchQuery, result.productComment);
+        } else if (result.intent === 'confused') {
+            // Koko is confused - show response with feedback option
+            addBotMessage(result.response);
+            addFeedbackPrompt(message);
         } else if (result.response) {
-            // Show AI response
+            // Show AI response for greetings, chat, help
             addBotMessage(result.response);
         } else {
-            // Search with original message
+            // Fallback: Search with original message
             const foundProducts = await searchProducts(message);
             if (foundProducts.length > 0) {
                 addProductResults(foundProducts.slice(0, 5), message);
@@ -672,13 +913,82 @@ async function handleUserMessage() {
     } catch (error) {
         console.error('Error processing message:', error);
         hideTypingIndicator();
-        addBotMessage('Sorry, something went wrong. Please try again!');
+        addBotMessage('Waduh, ada yang error nih, Bos. Coba lagi ya! 🔧');
         updateStatus('Error occurred', false);
     }
 
     // Reset processing state
     isProcessing = false;
     sendBtn.disabled = false;
+}
+
+// ============================================
+// Feedback Modal Functions
+// ============================================
+function showFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    const searchContext = document.getElementById('feedbackSearchContext');
+    const lastSearchSpan = document.getElementById('feedbackLastSearch');
+    const messageInput = document.getElementById('feedbackMessage');
+
+    // Show last search query if available
+    if (lastSearchQuery) {
+        searchContext.style.display = 'block';
+        lastSearchSpan.textContent = lastSearchQuery;
+    } else {
+        searchContext.style.display = 'none';
+    }
+
+    // Reset message
+    messageInput.value = '';
+
+    modal.classList.add('active');
+    console.log('📝 Feedback modal opened');
+}
+
+function hideFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    modal.classList.remove('active');
+}
+
+async function submitFeedback() {
+    const feedbackType = document.querySelector('input[name="feedbackType"]:checked')?.value || 'suggestion';
+    const feedbackMessage = document.getElementById('feedbackMessage').value.trim();
+    const submitBtn = document.getElementById('submitFeedbackBtn');
+
+    if (!feedbackMessage) {
+        alert('Tulis feedback dulu ya, Bos! 📝');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Mengirim...';
+
+    try {
+        await db.collection('feedback').add({
+            type: feedbackType,
+            message: feedbackMessage,
+            searchQuery: lastSearchQuery || null,
+            buyerSession: getBuyerSessionId(),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'unread'
+        });
+
+        console.log('✅ Feedback submitted:', { type: feedbackType, message: feedbackMessage });
+
+        hideFeedbackModal();
+        addBotMessage('Makasih feedbacknya, Bos! 🙏 Admin bakal baca dan (semoga) beneran ditindaklanjuti. Appreciate it!');
+
+        // Clear last search query
+        lastSearchQuery = '';
+
+    } catch (error) {
+        console.error('Failed to submit feedback:', error);
+        alert('Waduh, gagal kirim feedback. Coba lagi ya!');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Kirim Feedback';
+    }
 }
 
 // ============================================
@@ -737,12 +1047,21 @@ function listenToMyOrders() {
                 return timeB - timeA;
             });
 
-            // Update order count badge
+            // Update order count badges
+            const pendingCount = myOrders.filter(o => o.status === 'pending').length;
+
+            // Header badge (if exists)
             const orderCountEl = document.getElementById('orderCount');
             if (orderCountEl) {
-                const pendingCount = myOrders.filter(o => o.status === 'pending').length;
                 orderCountEl.textContent = pendingCount;
                 orderCountEl.style.display = pendingCount > 0 ? 'inline' : 'none';
+            }
+
+            // Bottom nav badge
+            const orderBadge = document.getElementById('orderBadge');
+            if (orderBadge) {
+                orderBadge.textContent = pendingCount;
+                orderBadge.style.display = pendingCount > 0 ? 'flex' : 'none';
             }
 
             console.log('📦 My orders updated:', myOrders.length);
@@ -790,7 +1109,10 @@ function showOrdersModal() {
 }
 
 function hideOrdersModal() {
-    document.getElementById('ordersModal').classList.remove('active');
+    const modal = document.getElementById('ordersModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 // Format timestamp for display
@@ -968,3 +1290,540 @@ async function submitFeedback() {
         alert('Failed to submit feedback. Please try again.');
     }
 }
+
+// ============================================
+// BOTTOM NAVIGATION
+// ============================================
+let isGridMode = false;
+let currentTab = 'chat'; // Track current active tab
+
+function switchTab(tab) {
+    const navChat = document.getElementById('navChat');
+    const wasOnChatTab = currentTab === 'chat';
+
+    // Update nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+
+    // Handle tab action - switch views
+    document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+        view.classList.add('view-transition');
+    });
+
+    switch (tab) {
+        case 'chat':
+            document.getElementById('chatView').classList.add('active');
+            // Only toggle if we were ALREADY on chat view
+            // If coming from cart/orders, just show current mode without toggling
+            if (wasOnChatTab) {
+                toggleChatGridMode();
+            } else {
+                // Just update display without toggling
+                updateChatModeDisplay();
+            }
+            break;
+        case 'cart':
+            document.getElementById('cartView').classList.add('active');
+            renderCartView();
+            break;
+        case 'orders':
+            document.getElementById('ordersView').classList.add('active');
+            renderOrdersView();
+            break;
+        case 'settings':
+            document.getElementById('settingsView').classList.add('active');
+            break;
+    }
+
+    // Update current tab tracker
+    currentTab = tab;
+
+    // Always update chat nav appearance based on current mode
+    updateChatNavAppearance();
+}
+
+function toggleChatGridMode() {
+    isGridMode = !isGridMode;
+    updateChatModeDisplay();
+
+    if (isGridMode) {
+        // Switch to grid mode
+        populateSellerFilter();
+        renderProductGrid();
+    }
+}
+
+// Update nav appearance (icon + label) based on mode
+function updateChatNavAppearance() {
+    const navChat = document.getElementById('navChat');
+    const navLabel = navChat ? navChat.querySelector('.nav-label') : null;
+
+    if (navChat) {
+        if (isGridMode) {
+            navChat.classList.add('grid-mode');
+            if (navLabel) navLabel.textContent = 'Menu';
+        } else {
+            navChat.classList.remove('grid-mode');
+            if (navLabel) navLabel.textContent = 'Chat';
+        }
+    }
+}
+
+function updateChatModeDisplay() {
+    const chatMode = document.getElementById('chatMode');
+    const gridMode = document.getElementById('gridMode');
+
+    if (isGridMode) {
+        chatMode.classList.remove('active');
+        chatMode.classList.add('fade-out');
+        gridMode.classList.add('active');
+        gridMode.classList.add('fade-in');
+    } else {
+        chatMode.classList.add('active');
+        chatMode.classList.add('fade-in');
+        gridMode.classList.remove('active');
+        gridMode.classList.add('fade-out');
+        scrollToBottom();
+    }
+
+    // Clean up animation classes after transition
+    setTimeout(() => {
+        chatMode.classList.remove('fade-in', 'fade-out');
+        gridMode.classList.remove('fade-in', 'fade-out');
+    }, 300);
+
+    updateChatNavAppearance();
+}
+
+// Populate seller filter dropdown
+function populateSellerFilter() {
+    const select = document.getElementById('sellerFilter');
+    if (!select) return;
+
+    // Get unique sellers
+    const sellers = [...new Set(products.map(p => p.seller))].sort();
+
+    // Clear and rebuild options
+    select.innerHTML = '<option value="all">All Sellers</option>';
+    sellers.forEach(seller => {
+        select.innerHTML += `<option value="${seller}">${seller}</option>`;
+    });
+}
+
+// Render product grid
+function renderProductGrid(filterSeller = 'all') {
+    const grid = document.getElementById('productGrid');
+    if (!grid) return;
+
+    // Filter and sort products
+    let filteredProducts = filterSeller === 'all'
+        ? [...products]
+        : products.filter(p => p.seller === filterSeller);
+
+    // Sort by price (cheapest first)
+    filteredProducts.sort((a, b) => a.price - b.price);
+
+    if (filteredProducts.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px 20px; color: #6b7280;">
+                <div style="font-size: 48px; margin-bottom: 12px;">🍽️</div>
+                <p>No products available</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    filteredProducts.forEach((product, index) => {
+        const isBestPrice = index === 0;
+
+        html += `
+            <div class="grid-product-card ${isBestPrice ? 'best-price' : ''}">
+                <h4 class="grid-product-name">${product.name}</h4>
+                <span class="grid-product-seller">🏪 ${product.seller}</span>
+                <div class="grid-product-price">Rp ${formatPrice(product.price)}</div>
+                <div class="grid-product-actions">
+                    <button class="grid-add-cart" onclick="addToCart('${product.id}')">🛒</button>
+                    <button class="grid-order-now" onclick="orderNow('${product.id}')">⚡</button>
+                </div>
+            </div>
+        `;
+    });
+
+    grid.innerHTML = html;
+}
+
+// Filter products by seller
+function filterProductsBySeller() {
+    const select = document.getElementById('sellerFilter');
+    const selectedSeller = select ? select.value : 'all';
+    renderProductGrid(selectedSeller);
+}
+
+// Render cart view (not modal)
+function renderCartView() {
+    const cartItemsEl = document.getElementById('cartItems');
+    const cartTotalEl = document.getElementById('cartTotal');
+
+    if (cart.length === 0) {
+        cartItemsEl.innerHTML = `
+            <div class="empty-cart">
+                <span class="empty-cart-icon">🛒</span>
+                <p>${getTranslation('cartEmpty')}</p>
+            </div>
+        `;
+        cartTotalEl.textContent = 'Rp 0';
+        return;
+    }
+
+    let html = '';
+    cart.forEach(item => {
+        html += `
+            <div class="cart-item">
+                <div class="cart-item-info">
+                    <h4>${item.product.name}</h4>
+                    <span class="cart-item-seller">${item.product.seller}</span>
+                    <span class="cart-item-price">Rp ${formatPrice(item.product.price)}</span>
+                </div>
+                <div class="cart-item-controls">
+                    <button class="qty-btn" onclick="updateCartQuantity('${item.product.id}', -1)">−</button>
+                    <span class="qty-value">${item.quantity}</span>
+                    <button class="qty-btn" onclick="updateCartQuantity('${item.product.id}', 1)">+</button>
+                    <button class="remove-btn" onclick="removeFromCart('${item.product.id}')">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    cartItemsEl.innerHTML = html;
+    cartTotalEl.textContent = `Rp ${formatPrice(getCartTotal())}`;
+}
+
+// Render orders view (not modal)
+function renderOrdersView() {
+    const ordersList = document.getElementById('ordersList');
+
+    if (myOrders.length === 0) {
+        ordersList.innerHTML = `
+            <div class="empty-orders">
+                <span class="empty-orders-icon">📦</span>
+                <p>${getTranslation('ordersEmpty')}</p>
+                <p class="empty-subtext">${getTranslation('ordersSubtext')}</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    myOrders.forEach(order => {
+        const timestamp = order.timestamp ?
+            formatTimestamp(order.timestamp.toDate()) :
+            'Just now';
+        const statusClass = order.status === 'confirmed' ? 'confirmed' : 'pending';
+        const statusLabel = order.status === 'confirmed' ? 'SELESAI' : 'PENDING';
+
+        // Escape special characters for onclick handlers
+        const escapedSeller = (order.seller || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+        const escapedProduct = (order.productName || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+        html += `
+            <div class="order-item ${statusClass}">
+                <div class="order-item-info">
+                    <h4>${order.orderId ? `#${order.orderId} - ` : ''}${order.productName}</h4>
+                    <span class="order-item-seller">${order.seller}</span>
+                    <span class="order-item-time">${timestamp}</span>
+                </div>
+                <div class="order-item-status">
+                    <span class="order-item-price">Rp ${formatPrice(order.totalPrice || order.price)}</span>
+                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                </div>
+                ${order.status !== 'confirmed' ? `
+                <div class="order-item-actions">
+                    <button class="order-chat-btn" onclick="openChat('${order.id}', '${escapedSeller}', '${escapedProduct}')">
+                        ${getTranslation('chatWithSeller')}
+                    </button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    ordersList.innerHTML = html;
+}
+
+// Update bottom nav badges
+function updateBottomNavBadges() {
+    // Cart badge
+    const cartBadge = document.getElementById('cartBadge');
+    if (cartBadge) {
+        const cartCount = getCartItemCount();
+        cartBadge.textContent = cartCount;
+        cartBadge.style.display = cartCount > 0 ? 'flex' : 'none';
+    }
+
+    // Order badge
+    const orderBadge = document.getElementById('orderBadge');
+    if (orderBadge) {
+        const pendingCount = myOrders.filter(o => o.status === 'pending').length;
+        orderBadge.textContent = pendingCount;
+        orderBadge.style.display = pendingCount > 0 ? 'flex' : 'none';
+    }
+}
+
+// ============================================
+// SETTINGS FUNCTIONALITY
+// ============================================
+
+let isDarkMode = false;
+let currentLanguage = 'id'; // Default Indonesian
+
+// Initialize settings from localStorage
+function initSettings() {
+    // Load theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        isDarkMode = true;
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeToggle')?.classList.add('dark');
+    }
+
+    // Load language preference
+    const savedLang = localStorage.getItem('language');
+    if (savedLang) {
+        currentLanguage = savedLang;
+        const langSelect = document.getElementById('languageSelect');
+        if (langSelect) langSelect.value = savedLang;
+    }
+}
+
+// Toggle dark/light mode
+function toggleTheme() {
+    isDarkMode = !isDarkMode;
+    const themeToggle = document.getElementById('themeToggle');
+
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        themeToggle?.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        console.log('🌙 Dark mode enabled');
+    } else {
+        document.body.classList.remove('dark-mode');
+        themeToggle?.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        console.log('☀️ Light mode enabled');
+    }
+}
+
+// Change language
+function changeLanguage() {
+    const langSelect = document.getElementById('languageSelect');
+    if (langSelect) {
+        currentLanguage = langSelect.value;
+        localStorage.setItem('language', currentLanguage);
+        console.log('🌐 Language changed to:', currentLanguage);
+
+        // Update UI text based on language
+        updateUILanguage();
+    }
+}
+
+// Update UI text based on selected language
+function updateUILanguage() {
+    const translations = {
+        en: {
+            // Header
+            tagline: 'Chat with us to find your perfect product',
+
+            // Chat
+            chatPlaceholder: 'I want...',
+            sendBtn: 'Send',
+            statusReady: 'Ready! Ask me anything',
+
+            // View Headers
+            cartHeader: '🛒 Your Cart',
+            ordersHeader: '📦 My Orders',
+            settingsHeader: '⚙️ Settings',
+
+            // Cart
+            cartEmpty: 'Your cart is empty',
+            cartTotal: 'Total:',
+            checkoutBtn: 'Proceed to Checkout →',
+
+            // Orders
+            ordersEmpty: 'No orders yet',
+            ordersSubtext: 'Chat with Koko to find your dream products!',
+            chatWithSeller: '💬 Chat with Seller',
+
+            // Bottom Nav
+            navChat: 'Chat',
+            navMenu: 'Menu',
+            navCart: 'Cart',
+            navOrders: 'Orders',
+            navSettings: 'Settings',
+
+            // Grid/Menu
+            filterLabel: '🏪 Filter:',
+            filterAll: 'All Sellers',
+
+            // Settings
+            settingsLang: 'Language / Bahasa',
+            settingsLangDesc: 'Choose your preferred language',
+            settingsTheme: 'Theme / Tema',
+            settingsThemeDesc: 'Switch between light and dark mode',
+            settingsAdmin: 'Admin Dashboard',
+            settingsAdminDesc: 'Manage sellers, products & orders',
+            appVersion: 'Version 1.0 • Made with ❤️',
+
+            // Product Cards
+            addToCart: 'Add to Cart',
+            orderNow: 'Order Now',
+            bestPrice: '👑 Best Price!'
+        },
+        id: {
+            // Header
+            tagline: 'Chat dengan kami untuk menemukan produk impianmu',
+
+            // Chat
+            chatPlaceholder: 'Aku mau...',
+            sendBtn: 'Kirim',
+            statusReady: 'Siap! Mau cari apa?',
+
+            // View Headers
+            cartHeader: '🛒 Keranjang',
+            ordersHeader: '📦 Pesanan Saya',
+            settingsHeader: '⚙️ Pengaturan',
+
+            // Cart
+            cartEmpty: 'Keranjang kosong',
+            cartTotal: 'Total:',
+            checkoutBtn: 'Lanjut ke Pembayaran →',
+
+            // Orders
+            ordersEmpty: 'Belum ada pesanan',
+            ordersSubtext: 'Chat dengan Koko untuk menemukan produk impianmu!',
+            chatWithSeller: '💬 Chat dengan Penjual',
+
+            // Bottom Nav
+            navChat: 'Chat',
+            navMenu: 'Menu',
+            navCart: 'Keranjang',
+            navOrders: 'Pesanan',
+            navSettings: 'Pengaturan',
+
+            // Grid/Menu
+            filterLabel: '🏪 Filter:',
+            filterAll: 'Semua Penjual',
+
+            // Settings
+            settingsLang: 'Language / Bahasa',
+            settingsLangDesc: 'Pilih bahasa yang kamu suka',
+            settingsTheme: 'Theme / Tema',
+            settingsThemeDesc: 'Ganti mode terang atau gelap',
+            settingsAdmin: 'Dashboard Admin',
+            settingsAdminDesc: 'Kelola penjual, produk & pesanan',
+            appVersion: 'Versi 1.0 • Dibuat dengan ❤️',
+
+            // Product Cards
+            addToCart: 'Masukkan Keranjang',
+            orderNow: 'Pesan Sekarang',
+            bestPrice: '👑 Harga Terbaik!'
+        }
+    };
+
+    const t = translations[currentLanguage] || translations.id;
+
+    // Header
+    const tagline = document.querySelector('.tagline');
+    if (tagline) tagline.textContent = t.tagline;
+
+    // Chat input & send
+    const chatInput = document.getElementById('userInput');
+    if (chatInput) chatInput.placeholder = t.chatPlaceholder;
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) sendBtn.textContent = t.sendBtn;
+
+    // View Headers
+    const cartHeader = document.querySelector('#cartView .view-header h2');
+    if (cartHeader) cartHeader.textContent = t.cartHeader;
+    const ordersHeader = document.querySelector('#ordersView .view-header h2');
+    if (ordersHeader) ordersHeader.textContent = t.ordersHeader;
+    const settingsHeader = document.querySelector('#settingsView .view-header h2');
+    if (settingsHeader) settingsHeader.textContent = t.settingsHeader;
+
+    // Cart
+    const cartTotal = document.querySelector('.cart-total span:first-child');
+    if (cartTotal) cartTotal.textContent = t.cartTotal;
+    const checkoutBtn = document.querySelector('.checkout-btn');
+    if (checkoutBtn) checkoutBtn.textContent = t.checkoutBtn;
+
+    // Bottom Nav Labels
+    const navChatLabel = document.querySelector('#navChat .nav-label');
+    if (navChatLabel) navChatLabel.textContent = isGridMode ? t.navMenu : t.navChat;
+    const navCartLabel = document.querySelector('#navCart .nav-label');
+    if (navCartLabel) navCartLabel.textContent = t.navCart;
+    const navOrdersLabel = document.querySelector('#navOrders .nav-label');
+    if (navOrdersLabel) navOrdersLabel.textContent = t.navOrders;
+    const navSettingsLabel = document.querySelector('#navSettings .nav-label');
+    if (navSettingsLabel) navSettingsLabel.textContent = t.navSettings;
+
+    // Filter bar
+    const filterLabel = document.querySelector('.filter-bar label');
+    if (filterLabel) filterLabel.textContent = t.filterLabel;
+    const filterAllOption = document.querySelector('#sellerFilter option[value="all"]');
+    if (filterAllOption) filterAllOption.textContent = t.filterAll;
+
+    // Settings items
+    const langTitle = document.querySelector('#settingsView .settings-group:nth-child(1) .settings-text h4');
+    if (langTitle) langTitle.textContent = t.settingsLang;
+    const langDesc = document.querySelector('#settingsView .settings-group:nth-child(1) .settings-text p');
+    if (langDesc) langDesc.textContent = t.settingsLangDesc;
+    const themeTitle = document.querySelector('#settingsView .settings-group:nth-child(2) .settings-text h4');
+    if (themeTitle) themeTitle.textContent = t.settingsTheme;
+    const themeDesc = document.querySelector('#settingsView .settings-group:nth-child(2) .settings-text p');
+    if (themeDesc) themeDesc.textContent = t.settingsThemeDesc;
+    const adminTitle = document.querySelector('#settingsView .settings-group:nth-child(3) .settings-text h4');
+    if (adminTitle) adminTitle.textContent = t.settingsAdmin;
+    const adminDesc = document.querySelector('#settingsView .settings-group:nth-child(3) .settings-text p');
+    if (adminDesc) adminDesc.textContent = t.settingsAdminDesc;
+    const appVersion = document.querySelector('#settingsView .app-info .settings-text p');
+    if (appVersion) appVersion.textContent = t.appVersion;
+
+    // Re-render views if they are active to update dynamic content
+    if (currentTab === 'cart') {
+        renderCartView();
+    } else if (currentTab === 'orders') {
+        renderOrdersView();
+    }
+
+    console.log('📝 UI language updated to:', currentLanguage);
+}
+
+// Get current translation
+function getTranslation(key) {
+    const translations = {
+        en: {
+            cartEmpty: 'Your cart is empty',
+            ordersEmpty: 'No orders yet',
+            ordersSubtext: 'Chat with Koko to find your dream products!',
+            chatWithSeller: '💬 Chat with Seller',
+            addToCart: 'Add to Cart',
+            orderNow: 'Order Now'
+        },
+        id: {
+            cartEmpty: 'Keranjang kosong',
+            ordersEmpty: 'Belum ada pesanan',
+            ordersSubtext: 'Chat dengan Koko untuk menemukan produk impianmu!',
+            chatWithSeller: '💬 Chat dengan Penjual',
+            addToCart: 'Masukkan Keranjang',
+            orderNow: 'Pesan Sekarang'
+        }
+    };
+    return translations[currentLanguage]?.[key] || translations.id[key];
+}
+
+// Initialize settings on load
+document.addEventListener('DOMContentLoaded', initSettings);
+

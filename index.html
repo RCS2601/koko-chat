@@ -21,108 +21,182 @@
                 <h1>Ultimate Store</h1>
             </div>
             <p class="tagline">Chat with us to find your perfect product</p>
-            <div class="header-links">
-                <button class="cart-btn" onclick="showCartModal()">🛒 Cart <span id="cartCount"
-                        class="cart-count">0</span></button>
-                <button class="my-orders-btn" onclick="showOrdersModal()">📦 My Orders <span id="orderCount"
-                        class="order-count">0</span></button>
-                <a href="seller.html" class="seller-link">👨‍💼 Seller Dashboard →</a>
-            </div>
         </header>
 
-        <!-- Status Bar -->
-        <div class="status-bar" id="statusBar">
-            <span class="status-dot"></span>
-            <span id="statusText">Connecting...</span>
+        <!-- ============================================
+             VIEW: CHAT (Default) - Contains both Chat and Grid sub-views
+             ============================================ -->
+        <div class="view active" id="chatView">
+            <!-- Sub-view: Chat Mode -->
+            <div class="sub-view active" id="chatMode">
+                <!-- Status Bar -->
+                <div class="status-bar" id="statusBar">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+
+                <!-- Chat Container -->
+                <main class="chat-container" id="chatContainer">
+                    <!-- Messages will be inserted here -->
+                </main>
+
+                <!-- Input Area -->
+                <footer class="input-area">
+                    <input type="text" id="userInput" class="chat-input" placeholder="I want..." autocomplete="off">
+                    <button id="sendBtn" class="send-btn">
+                        Send
+                    </button>
+                </footer>
+            </div>
+
+            <!-- Sub-view: Grid Menu Mode -->
+            <div class="sub-view" id="gridMode">
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <label for="sellerFilter">🏪 Filter:</label>
+                    <select id="sellerFilter" onchange="filterProductsBySeller()">
+                        <option value="all">All Sellers</option>
+                        <!-- Seller options will be populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Product Grid -->
+                <div class="product-grid" id="productGrid">
+                    <!-- Products will be rendered here -->
+                </div>
+            </div>
         </div>
 
-        <!-- Chat Container -->
-        <main class="chat-container" id="chatContainer">
-            <!-- Messages will be inserted here -->
-        </main>
+        <!-- ============================================
+             VIEW: CART
+             ============================================ -->
+        <div class="view" id="cartView">
+            <div class="view-header">
+                <h2>🛒 Your Cart</h2>
+            </div>
+            <div class="view-content cart-items" id="cartItems">
+                <!-- Cart items will be rendered here -->
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cartTotal">Rp 0</span>
+                </div>
+                <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout →</button>
+            </div>
+        </div>
 
-        <!-- Input Area -->
-        <footer class="input-area">
-            <input type="text" id="userInput" class="chat-input" placeholder="I want..." autocomplete="off">
-            <button id="sendBtn" class="send-btn">
-                Send
+        <!-- ============================================
+             VIEW: ORDERS
+             ============================================ -->
+        <div class="view" id="ordersView">
+            <div class="view-header">
+                <h2>📦 My Orders</h2>
+            </div>
+            <div class="view-content orders-list" id="ordersList">
+                <!-- Orders will be rendered here -->
+            </div>
+        </div>
+
+        <!-- ============================================
+             VIEW: SETTINGS
+             ============================================ -->
+        <div class="view" id="settingsView">
+            <div class="view-header">
+                <h2>⚙️ Settings</h2>
+            </div>
+            <div class="view-content settings-content">
+                <!-- Language Setting -->
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <span class="settings-icon">🌐</span>
+                            <div class="settings-text">
+                                <h4>Language / Bahasa</h4>
+                                <p>Choose your preferred language</p>
+                            </div>
+                        </div>
+                        <select id="languageSelect" class="settings-select" onchange="changeLanguage()">
+                            <option value="id">🇮🇩 Indonesia</option>
+                            <option value="en">🇬🇧 English</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Theme Setting -->
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <span class="settings-icon">🎨</span>
+                            <div class="settings-text">
+                                <h4>Theme / Tema</h4>
+                                <p>Switch between light and dark mode</p>
+                            </div>
+                        </div>
+                        <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                            <span class="theme-icon light">☀️</span>
+                            <span class="theme-icon dark">🌙</span>
+                            <div class="theme-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Access -->
+                <div class="settings-group">
+                    <a href="seller.html" class="settings-item admin-link">
+                        <div class="settings-item-info">
+                            <span class="settings-icon">👨‍💼</span>
+                            <div class="settings-text">
+                                <h4>Admin Dashboard</h4>
+                                <p>Manage sellers, products & orders</p>
+                            </div>
+                        </div>
+                        <span class="settings-arrow">→</span>
+                    </a>
+                </div>
+
+                <!-- App Info -->
+                <div class="settings-group app-info">
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <span class="settings-icon">ℹ️</span>
+                            <div class="settings-text">
+                                <h4>Ultimate Store</h4>
+                                <p>Version 1.0 • Made with ❤️</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" id="navChat" onclick="switchTab('chat')">
+                <span class="nav-icon">✦</span>
+                <span class="nav-icon-toggle">☰</span>
+                <span class="nav-label">Chat</span>
             </button>
-        </footer>
+            <button class="nav-item" id="navCart" onclick="switchTab('cart')">
+                <span class="nav-icon">⬡</span>
+                <span class="nav-label">Cart</span>
+                <span class="nav-badge" id="cartBadge" style="display: none;">0</span>
+            </button>
+            <button class="nav-item" id="navOrders" onclick="switchTab('orders')">
+                <span class="nav-icon">❐</span>
+                <span class="nav-label">Orders</span>
+                <span class="nav-badge" id="orderBadge" style="display: none;">0</span>
+            </button>
+            <button class="nav-item" id="navSettings" onclick="switchTab('settings')">
+                <span class="nav-icon">⚙</span>
+                <span class="nav-label">Settings</span>
+            </button>
+        </nav>
 
         <!-- Loading Overlay -->
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
             <span class="loading-text" id="loadingText">Loading products...</span>
-        </div>
-
-        <!-- Orders Modal -->
-        <div class="modal" id="ordersModal">
-            <div class="modal-content orders-modal-content">
-                <div class="modal-header">
-                    <h3>📦 My Orders</h3>
-                    <button class="close-modal" onclick="hideOrdersModal()">✕</button>
-                </div>
-                <div class="modal-body orders-list" id="ordersList">
-                    <!-- Orders will be rendered here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Chat Modal -->
-        <div class="modal" id="chatModal">
-            <div class="modal-content chat-modal-content">
-                <div class="modal-header">
-                    <h3 id="chatModalTitle">💬 Chat with Seller</h3>
-                    <button class="close-modal" onclick="closeChatModal()">✕</button>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <!-- Chat messages will be rendered here -->
-                </div>
-                <div class="chat-input-area">
-                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
-                    <button class="chat-send-btn" onclick="sendChatMessage()">Send</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Feedback Modal -->
-        <div class="modal" id="feedbackModal">
-            <div class="modal-content feedback-modal-content">
-                <div class="modal-header">
-                    <h3>📝 Give Us Feedback</h3>
-                    <button class="close-modal" onclick="hideFeedbackModal()">✕</button>
-                </div>
-                <div class="modal-body">
-                    <p class="feedback-context">You searched for: <strong id="feedbackSearchQuery">...</strong></p>
-                    <textarea id="feedbackText"
-                        placeholder="Tell us what you'd like to see! e.g., 'Please add sushi options' or 'I want more vegetarian food'"
-                        rows="4"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button class="cancel-btn" onclick="hideFeedbackModal()">Cancel</button>
-                    <button class="confirm-btn" onclick="submitFeedback()">Submit Feedback</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cart Modal -->
-        <div class="modal" id="cartModal">
-            <div class="modal-content cart-modal-content">
-                <div class="modal-header">
-                    <h3>🛒 Your Cart</h3>
-                    <button class="close-modal" onclick="hideCartModal()">✕</button>
-                </div>
-                <div class="modal-body cart-items" id="cartItems">
-                    <!-- Cart items will be rendered here -->
-                </div>
-                <div class="cart-footer">
-                    <div class="cart-total">
-                        <span>Total:</span>
-                        <span id="cartTotal">Rp 0</span>
-                    </div>
-                    <button class="checkout-btn" onclick="proceedToCheckout()">Proceed to Checkout →</button>
-                </div>
-            </div>
         </div>
 
         <!-- Checkout Modal -->
@@ -179,6 +253,68 @@
                     <button class="cancel-btn" onclick="hideCheckoutModal()">Back</button>
                     <button class="confirm-btn" id="confirmCheckoutBtn" onclick="confirmCheckout()" disabled>Confirm
                         Order</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Modal -->
+        <div class="modal" id="feedbackModal">
+            <div class="modal-content feedback-modal-content">
+                <div class="modal-header">
+                    <h3>📝 Feedback untuk Koko</h3>
+                    <button class="close-modal" onclick="hideFeedbackModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="feedback-intro">Ada saran? Produk yang dicari belum ada? Atau Koko salah paham? Kasih tau
+                        di sini, Bos!</p>
+
+                    <div class="feedback-type-selector">
+                        <label class="feedback-type" data-type="missing_product">
+                            <input type="radio" name="feedbackType" value="missing_product" checked>
+                            <span class="type-icon">🛒</span>
+                            <span class="type-label">Produk Belum Ada</span>
+                        </label>
+                        <label class="feedback-type" data-type="wrong_answer">
+                            <input type="radio" name="feedbackType" value="wrong_answer">
+                            <span class="type-icon">🤔</span>
+                            <span class="type-label">Koko Salah Paham</span>
+                        </label>
+                        <label class="feedback-type" data-type="suggestion">
+                            <input type="radio" name="feedbackType" value="suggestion">
+                            <span class="type-icon">💡</span>
+                            <span class="type-label">Saran Lain</span>
+                        </label>
+                    </div>
+
+                    <div class="feedback-search-context" id="feedbackSearchContext" style="display: none;">
+                        <label>Pencarian terakhir:</label>
+                        <span id="feedbackLastSearch">-</span>
+                    </div>
+
+                    <textarea id="feedbackMessage" class="feedback-textarea"
+                        placeholder="Tulis feedback di sini... Contoh: 'Cari nasi bebek tapi gak ketemu' atau 'Koko gak ngerti maksud saya'"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" onclick="hideFeedbackModal()">Batal</button>
+                    <button class="confirm-btn" id="submitFeedbackBtn" onclick="submitFeedback()">Kirim
+                        Feedback</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Modal (Buyer-Seller Communication) -->
+        <div class="modal" id="chatModal">
+            <div class="modal-content chat-modal-content">
+                <div class="modal-header">
+                    <h3 id="chatModalTitle">💬 Chat</h3>
+                    <button class="close-modal" onclick="closeChatModal()">✕</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Chat messages will be rendered here -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Ketik pesan..." autocomplete="off">
+                    <button class="chat-send-btn" onclick="sendChatMessage()">Kirim</button>
                 </div>
             </div>
         </div>
