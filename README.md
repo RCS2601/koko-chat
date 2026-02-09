@@ -34,7 +34,7 @@ A smart, AI-powered e-commerce marketplace featuring "Koko" - a cheeky, context-
 
 ## 📄 Documentation
 For a detailed technical breakdown and visual preview, check out the generated documentation file:
--   [Project_Documentation.docx](Project_Documentation.docx)
+-   [Project_Documentation.docx](https://docs.google.com/document/d/17HwJEOnXcsWV7C1fhse4mbc7DPcrLLNlhEKDdo97tFQ/edit?usp=sharing)
 
 ## 🛠️ Tech Stack
 
