@@ -173,6 +173,43 @@
                 </div>
             </div>
         </div>
+
+        <!-- Set Agreed Price Modal -->
+        <div class="modal" id="setPriceModal">
+            <div class="modal-content set-price-modal-content">
+                <div class="modal-header">
+                    <h3>💰 Set Agreed Price</h3>
+                    <button class="close-modal" onclick="hideSetPriceModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="price-comparison">
+                        <div class="price-item original">
+                            <span class="price-label">📋 Original Price</span>
+                            <span class="price-value" id="modalOriginalPrice">Rp 0</span>
+                        </div>
+                        <div class="price-item bid">
+                            <span class="price-label">💰 Buyer's Bid</span>
+                            <span class="price-value" id="modalBidPrice">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="agreed-price-input">
+                        <label for="agreedPriceInput">🤝 Set Agreed Price</label>
+                        <div class="input-group">
+                            <span class="currency">Rp</span>
+                            <input type="number" id="agreedPriceInput" placeholder="Enter final price">
+                        </div>
+                        <div class="quick-actions">
+                            <button class="quick-btn" onclick="setQuickPrice('bid')">Accept Bid</button>
+                            <button class="quick-btn" onclick="setQuickPrice('original')">Keep Original</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" onclick="hideSetPriceModal()">Cancel</button>
+                    <button class="confirm-btn" onclick="confirmAgreedPrice()">Confirm Price</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->

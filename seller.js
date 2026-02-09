@@ -459,7 +459,9 @@ function renderOrders() {
 function createOrderCard(order, isNew = false) {
     const card = document.createElement('div');
     const isConfirmed = order.status === 'confirmed';
-    card.className = `order-card ${isNew && !isConfirmed ? 'new' : ''} ${isConfirmed ? 'confirmed' : ''}`;
+    const isPendingAgreement = order.status === 'pending_agreement';
+    const isPendingPayment = order.status === 'pending_payment';
+    card.className = `order-card ${isNew && !isConfirmed ? 'new' : ''} ${isConfirmed ? 'confirmed' : ''} ${isPendingAgreement ? 'bid-pending' : ''}`;
 
     const timestamp = order.timestamp ?
         formatTimestamp(order.timestamp.toDate()) :
@@ -471,6 +473,23 @@ function createOrderCard(order, isNew = false) {
         order.paymentMethod === 'cash' ? '💵 Cash' : '';
     const quantity = order.quantity > 1 ? ` × ${order.quantity}` : '';
 
+    // Bidding info
+    const hasBid = order.bidPrice && order.bidPrice !== order.totalPrice;
+    const bidInfo = hasBid ? `
+        <div class="bid-info">
+            <span class="original-price">📋 Original: Rp ${formatPrice(order.totalPrice || order.price)}</span>
+            <span class="bid-price">💰 Bid: Rp ${formatPrice(order.bidPrice)}</span>
+            ${order.agreedPrice ? `<span class="agreed-price">✅ Agreed: Rp ${formatPrice(order.agreedPrice)}</span>` : ''}
+        </div>
+    ` : '';
+
+    // Display price based on status
+    const displayPrice = order.agreedPrice || order.totalPrice || order.price;
+
+    // Status display
+    const statusLabel = isPendingAgreement ? '⏳ Pending Agreement' :
+        isPendingPayment ? '💳 Pending Payment' : order.status;
+
     card.innerHTML = `
         <div class="order-header">
             <div class="order-info">
@@ -478,25 +497,33 @@ function createOrderCard(order, isNew = false) {
                     ${orderId ? `<span class="order-id">${orderId}</span>` : ''}
                     ${order.productName}${quantity}
                     ${isNew && !isConfirmed ? '<span class="new-badge">NEW!</span>' : ''}
+                    ${hasBid ? '<span class="bid-badge">💰 BID</span>' : ''}
                 </h4>
                 <div class="seller-name">🏪 ${order.seller}</div>
+                ${bidInfo}
                 <div class="order-meta">
                     <span>🕐 ${timestamp}</span>
                     ${paymentIcon ? `<span class="payment-badge">${paymentIcon}</span>` : ''}
                 </div>
             </div>
             <div>
-                <span class="order-price">Rp ${formatPrice(order.totalPrice || order.price)}</span>
-                <span class="order-status ${order.status}">${order.status}</span>
+                <span class="order-price">Rp ${formatPrice(displayPrice)}</span>
+                <span class="order-status ${order.status}">${statusLabel}</span>
             </div>
         </div>
         <div class="order-actions">
             <button class="action-btn chat" onclick="openChat('${order.id}', '${order.productName}')">
                 💬 Chat
             </button>
-            <button class="action-btn confirm" onclick="confirmOrder('${order.id}')" ${isConfirmed ? 'disabled' : ''}>
-                ${isConfirmed ? '✅ Confirmed' : '✓ Confirm Order'}
-            </button>
+            ${isPendingAgreement ? `
+                <button class="action-btn set-price" onclick="showSetPriceModal('${order.id}', ${order.bidPrice}, ${order.totalPrice || order.price})">
+                    💰 Set Price
+                </button>
+            ` : `
+                <button class="action-btn confirm" onclick="confirmOrder('${order.id}')" ${isConfirmed ? 'disabled' : ''}>
+                    ${isConfirmed ? '✅ Confirmed' : '✓ Confirm Order'}
+                </button>
+            `}
             <button class="action-btn delete" onclick="deleteOrder('${order.id}')">
                 🗑️ Delete
             </button>
@@ -536,6 +563,61 @@ async function deleteOrder(orderId) {
 }
 
 // ============================================
+// Set Agreed Price Modal
+// ============================================
+let currentPriceOrderId = null;
+let currentBidPrice = 0;
+let currentOriginalPrice = 0;
+
+function showSetPriceModal(orderId, bidPrice, originalPrice) {
+    currentPriceOrderId = orderId;
+    currentBidPrice = bidPrice;
+    currentOriginalPrice = originalPrice;
+
+    document.getElementById('modalOriginalPrice').textContent = `Rp ${formatPrice(originalPrice)}`;
+    document.getElementById('modalBidPrice').textContent = `Rp ${formatPrice(bidPrice)}`;
+    document.getElementById('agreedPriceInput').value = bidPrice; // Default to bid price
+
+    document.getElementById('setPriceModal').classList.add('active');
+}
+
+function hideSetPriceModal() {
+    document.getElementById('setPriceModal').classList.remove('active');
+    currentPriceOrderId = null;
+}
+
+function setQuickPrice(type) {
+    const input = document.getElementById('agreedPriceInput');
+    if (type === 'bid') {
+        input.value = currentBidPrice;
+    } else if (type === 'original') {
+        input.value = currentOriginalPrice;
+    }
+}
+
+async function confirmAgreedPrice() {
+    const agreedPrice = parseInt(document.getElementById('agreedPriceInput').value);
+
+    if (!agreedPrice || agreedPrice <= 0) {
+        alert('Please enter a valid price');
+        return;
+    }
+
+    try {
+        await db.collection('orders').doc(currentPriceOrderId).update({
+            agreedPrice: agreedPrice,
+            status: 'pending_payment'  // Move to payment selection
+        });
+
+        console.log('💰 Agreed price set:', agreedPrice);
+        hideSetPriceModal();
+    } catch (error) {
+        console.error('Failed to set agreed price:', error);
+        alert('Failed to set price. Please try again.');
+    }
+}
+
+// ============================================
 // Render Products (Current Seller's Products)
 // ============================================
 function renderProducts() {
@@ -558,6 +640,7 @@ function renderProducts() {
 
     allProducts.forEach(product => {
         const isAvailable = product.available !== false;
+        const isBiddingEnabled = product.biddingEnabled === true;
         const item = document.createElement('div');
         item.className = `product-item ${!isAvailable ? 'unavailable' : ''}`;
         item.style.opacity = isAvailable ? '1' : '0.6';
@@ -566,9 +649,13 @@ function renderProducts() {
                 <h4>${product.name} ${!isAvailable ? '<span style="color: #ef4444; font-size: 12px;">❌ Unavailable</span>' : '<span style="color: #10b981; font-size: 12px;">✅ Available</span>'}</h4>
                 <div class="product-meta">
                     ${product.category || 'General'} • ${product.description || 'No description'}
+                    ${isBiddingEnabled ? ' • <span style="color: #f59e0b;">💰 Bidding ON</span>' : ''}
                 </div>
             </div>
             <div class="product-item-actions">
+                <button class="toggle-btn ${isBiddingEnabled ? 'bidding-on' : 'bidding-off'}" onclick="toggleBidding('${product.id}', ${!isBiddingEnabled})" title="${isBiddingEnabled ? 'Disable Bidding' : 'Enable Bidding'}">
+                    💰
+                </button>
                 <button class="toggle-btn ${isAvailable ? 'available' : 'unavailable'}" onclick="toggleAvailability('${product.id}', ${!isAvailable})" title="${isAvailable ? 'Mark Unavailable' : 'Mark Available'}">
                     ${isAvailable ? '🟢' : '🔴'}
                 </button>
@@ -614,6 +701,7 @@ async function addProduct() {
                 description,
                 tags,
                 available: true,
+                biddingEnabled: false,  // NEW: Allow price bidding
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -671,6 +759,24 @@ async function toggleAvailability(productId, newStatus) {
     } catch (error) {
         console.error('Failed to toggle availability:', error);
         alert('Failed to update availability. Please try again.');
+    }
+}
+
+// ============================================
+// Toggle Product Bidding
+// ============================================
+async function toggleBidding(productId, newStatus) {
+    if (!currentSeller) return;
+
+    try {
+        await db.collection('sellers').doc(currentSeller.id)
+            .collection('products').doc(productId).update({
+                biddingEnabled: newStatus
+            });
+        console.log(`💰 Product bidding ${newStatus ? 'enabled' : 'disabled'}:`, productId);
+    } catch (error) {
+        console.error('Failed to toggle bidding:', error);
+        alert('Failed to update bidding. Please try again.');
     }
 }
 
@@ -976,6 +1082,20 @@ function listenToFeedback() {
         });
 }
 
+// Helper function to render chat log as HTML
+function renderChatLog(chatLog) {
+    if (!chatLog || chatLog.length === 0) {
+        return '<div class="feedback-chatlog-empty">No chat history available</div>';
+    }
+
+    return chatLog.map(msg => `
+        <div class="feedback-chatlog-item ${msg.role}">
+            <span class="chatlog-role">${msg.role === 'user' ? '👤 Buyer' : '🤖 Koko'}</span>
+            <span class="chatlog-text">${msg.text}</span>
+        </div>
+    `).join('');
+}
+
 function showFeedbackListModal() {
     const modal = document.getElementById('feedbackListModal');
     const feedbackList = document.getElementById('feedbackList');
@@ -989,7 +1109,7 @@ function showFeedbackListModal() {
             </div>
         `;
     } else {
-        feedbackList.innerHTML = allFeedback.map(feedback => {
+        feedbackList.innerHTML = allFeedback.map((feedback, index) => {
             const timestamp = feedback.timestamp ? formatTimestamp(feedback.timestamp.toDate()) : 'Just now';
             const typeLabels = {
                 'missing_product': '🛒 Produk Belum Ada',
@@ -999,6 +1119,10 @@ function showFeedbackListModal() {
             const typeLabel = typeLabels[feedback.type] || '📝 Feedback';
             const statusClass = feedback.status === 'unread' ? 'unread' : 'read';
 
+            // Check if chat log exists
+            const hasChatLog = feedback.chatLog && feedback.chatLog.length > 0;
+            const chatLogCount = hasChatLog ? feedback.chatLog.length : 0;
+
             return `
                 <div class="feedback-item ${statusClass}">
                     <div class="feedback-item-header">
@@ -1007,6 +1131,19 @@ function showFeedbackListModal() {
                     </div>
                     ${feedback.searchQuery ? `<div class="feedback-search-query">🔍 Pencarian: "${feedback.searchQuery}"</div>` : ''}
                     <div class="feedback-text">${feedback.message || feedback.text || 'No message'}</div>
+                    
+                    ${hasChatLog ? `
+                        <div class="feedback-chatlog-section">
+                            <button class="feedback-chatlog-toggle" onclick="toggleChatLog('chatlog-${index}')">
+                                💬 Lihat Chat History (${chatLogCount} pesan)
+                                <span class="toggle-icon">▼</span>
+                            </button>
+                            <div class="feedback-chatlog" id="chatlog-${index}" style="display: none;">
+                                ${renderChatLog(feedback.chatLog)}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
                     <button class="feedback-delete-btn" onclick="deleteFeedback('${feedback.id}')">
                         ✓ Tandai Selesai
                     </button>
@@ -1016,6 +1153,23 @@ function showFeedbackListModal() {
     }
 
     modal.classList.add('active');
+}
+
+// Toggle chat log visibility
+function toggleChatLog(chatLogId) {
+    const chatLogEl = document.getElementById(chatLogId);
+    const toggleBtn = chatLogEl.previousElementSibling;
+    const toggleIcon = toggleBtn.querySelector('.toggle-icon');
+
+    if (chatLogEl.style.display === 'none') {
+        chatLogEl.style.display = 'block';
+        toggleIcon.textContent = '▲';
+        toggleBtn.classList.add('expanded');
+    } else {
+        chatLogEl.style.display = 'none';
+        toggleIcon.textContent = '▼';
+        toggleBtn.classList.remove('expanded');
+    }
 }
 
 function hideFeedbackListModal() {

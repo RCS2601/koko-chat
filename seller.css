@@ -939,6 +939,16 @@ body {
     transform: scale(1.1);
 }
 
+.toggle-btn.bidding-on {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.toggle-btn.bidding-off {
+    background: #f3f4f6;
+    opacity: 0.6;
+}
+
 /* Footer */
 .footer {
     text-align: center;
@@ -956,6 +966,169 @@ body {
 .back-link:hover {
     opacity: 1;
     text-decoration: underline;
+}
+
+/* Bid Info Display */
+.bid-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%);
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.bid-info .original-price {
+    color: #78716c;
+    text-decoration: line-through;
+}
+
+.bid-info .bid-price {
+    color: #d97706;
+    font-weight: 600;
+}
+
+.bid-info .agreed-price {
+    color: #059669;
+    font-weight: 600;
+}
+
+.bid-badge {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 600;
+}
+
+.order-card.bid-pending {
+    border-left: 4px solid #f59e0b;
+}
+
+.order-status.pending_agreement {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+}
+
+.order-status.pending_payment {
+    background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
+    color: #1e40af;
+}
+
+.action-btn.set-price {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+}
+
+.action-btn.set-price:hover {
+    background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%);
+}
+
+/* Set Price Modal */
+.set-price-modal-content {
+    max-width: 420px;
+}
+
+.price-comparison {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.price-item {
+    flex: 1;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.price-item.original {
+    background: #f3f4f6;
+}
+
+.price-item.bid {
+    background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%);
+}
+
+.price-label {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.price-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.agreed-price-input {
+    margin-top: 16px;
+}
+
+.agreed-price-input label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+}
+
+.agreed-price-input .input-group {
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.agreed-price-input .currency {
+    padding: 12px 16px;
+    background: #f3f4f6;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.agreed-price-input input {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    font-size: 16px;
+    font-family: inherit;
+    background: transparent;
+}
+
+.agreed-price-input input:focus {
+    outline: none;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.quick-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-btn:hover {
+    background: #e5e7eb;
 }
 
 /* Responsive */
@@ -1301,4 +1474,120 @@ body {
     50% {
         transform: scale(1.1);
     }
+}
+
+/* ============================================
+   Feedback Chat Log Styles
+   ============================================ */
+.feedback-chatlog-section {
+    margin: 12px 0;
+}
+
+.feedback-chatlog-toggle {
+    width: 100%;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.feedback-chatlog-toggle:hover {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    border-color: #9ca3af;
+}
+
+.feedback-chatlog-toggle.expanded {
+    border-radius: 8px 8px 0 0;
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white;
+    border-color: #3b82f6;
+}
+
+.feedback-chatlog-toggle .toggle-icon {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.feedback-chatlog {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.feedback-chatlog-empty {
+    text-align: center;
+    padding: 20px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.feedback-chatlog-item {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.feedback-chatlog-item:last-child {
+    margin-bottom: 0;
+}
+
+.feedback-chatlog-item.user {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    margin-left: 20%;
+    border-bottom-right-radius: 4px;
+}
+
+.feedback-chatlog-item.bot {
+    background: #374151;
+    color: #f3f4f6;
+    margin-right: 20%;
+    border-bottom-left-radius: 4px;
+}
+
+.chatlog-role {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.chatlog-text {
+    display: block;
+    word-wrap: break-word;
+}
+
+/* Custom scrollbar for chat log */
+.feedback-chatlog::-webkit-scrollbar {
+    width: 6px;
+}
+
+.feedback-chatlog::-webkit-scrollbar-track {
+    background: #374151;
+    border-radius: 3px;
+}
+
+.feedback-chatlog::-webkit-scrollbar-thumb {
+    background: #6b7280;
+    border-radius: 3px;
+}
+
+.feedback-chatlog::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
 }

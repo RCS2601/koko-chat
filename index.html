@@ -42,6 +42,9 @@
 
                 <!-- Input Area -->
                 <footer class="input-area">
+                    <button id="voiceBtn" class="voice-btn" style="display: none;" onclick="startVoiceInput()">
+                        🎤
+                    </button>
                     <input type="text" id="userInput" class="chat-input" placeholder="I want..." autocomplete="off">
                     <button id="sendBtn" class="send-btn">
                         Send
@@ -141,6 +144,24 @@
                     </div>
                 </div>
 
+                <!-- King Mode Setting -->
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <span class="settings-icon">👑</span>
+                            <div class="settings-text">
+                                <h4>King Mode</h4>
+                                <p>AI Agent handles seller communication</p>
+                            </div>
+                        </div>
+                        <div class="king-toggle" id="kingToggle" onclick="toggleKingMode()">
+                            <span class="king-icon off">🛡️</span>
+                            <span class="king-icon on">👑</span>
+                            <div class="king-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Admin Access -->
                 <div class="settings-group">
                     <a href="seller.html" class="settings-item admin-link">
@@ -203,7 +224,7 @@
         <div class="modal" id="checkoutModal">
             <div class="modal-content checkout-modal-content">
                 <div class="modal-header">
-                    <h3>💳 Checkout</h3>
+                    <h3>🛒 Confirm Order</h3>
                     <button class="close-modal" onclick="hideCheckoutModal()">✕</button>
                 </div>
                 <div class="modal-body">
@@ -211,48 +232,67 @@
                         <!-- Order summary will be rendered here -->
                     </div>
 
-                    <div class="payment-section">
-                        <h4>Select Payment Method</h4>
-                        <div class="payment-options">
-                            <div class="payment-option" id="paymentQris" onclick="selectPaymentMethod('qris')">
-                                <div class="payment-icon">📱</div>
-                                <div class="payment-info">
-                                    <strong>QRIS</strong>
-                                    <span>Scan QR code to pay</span>
+                    <!-- Bid Section (shown only for bidding-enabled products) -->
+                    <div class="bid-section" id="bidSection" style="display: none;">
+                        <h4>💰 Want to bid?</h4>
+                        <p class="bid-description">This product allows price negotiation. Enter your offer below:</p>
+                        <div class="bid-input-group">
+                            <span class="bid-currency">Rp</span>
+                            <input type="number" id="bidPriceInput" class="bid-input"
+                                placeholder="Enter your bid price">
+                        </div>
+                        <p class="bid-note">Leave empty to order at original price</p>
+                    </div>
+
+                    <!-- Order Type Selection -->
+                    <div class="order-type-section">
+                        <h4>📋 Order Type</h4>
+                        <div class="order-type-options">
+                            <div class="order-type-option selected" id="orderTypeNormal"
+                                onclick="selectOrderType('normal')">
+                                <div class="order-type-icon">✅</div>
+                                <div class="order-type-info">
+                                    <strong>Confirm Order</strong>
+                                    <span>Order at listed price</span>
                                 </div>
                             </div>
-                            <div class="payment-option" id="paymentCash" onclick="selectPaymentMethod('cash')">
-                                <div class="payment-icon">💵</div>
-                                <div class="payment-info">
-                                    <strong>Cash</strong>
-                                    <span>Pay at counter</span>
+                            <div class="order-type-option" id="orderTypeBid" onclick="selectOrderType('bid')"
+                                style="display: none;">
+                                <div class="order-type-icon">💰</div>
+                                <div class="order-type-info">
+                                    <strong>Place Bid</strong>
+                                    <span>Negotiate the price</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- QRIS Display (hidden by default) -->
-                    <div class="qris-display" id="qrisDisplay" style="display: none;">
-                        <div class="qris-code">
-                            <div class="qris-placeholder">
-                                <div class="qr-pattern"></div>
-                                <p>QRIS</p>
+                    <!-- Payment Selection (Visible dependent on order type) -->
+                    <div class="checkout-payment-section" id="checkoutPaymentSection" style="margin-top: 16px;">
+                        <h4>💳 Payment Method</h4>
+                        <div class="payment-selection-box">
+                            <div class="payment-btn-grid">
+                                <div class="payment-option-btn qris selected" id="paymentQris"
+                                    onclick="selectCheckoutPayment('qris')">
+                                    <span class="payment-icon">📱</span>
+                                    <span class="payment-label">QRIS</span>
+                                </div>
+                                <div class="payment-option-btn cash" id="paymentCash"
+                                    onclick="selectCheckoutPayment('cash')">
+                                    <span class="payment-icon">💵</span>
+                                    <span class="payment-label">Cash</span>
+                                </div>
                             </div>
                         </div>
-                        <p class="qris-instruction">Scan this QR code with your mobile banking or e-wallet app</p>
                     </div>
 
-                    <!-- Cash Display (hidden by default) -->
-                    <div class="cash-display" id="cashDisplay" style="display: none;">
-                        <div class="cash-icon">🧾</div>
-                        <p>Please pay at the counter when your order is ready</p>
-                        <p class="cash-order-number">Order #<span id="tempOrderNumber">---</span></p>
+                    <div class="checkout-note" id="checkoutNoteBid" style="display: none;">
+                        <p>📝 Payment will be selected after seller accepts your bid</p>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="cancel-btn" onclick="hideCheckoutModal()">Back</button>
-                    <button class="confirm-btn" id="confirmCheckoutBtn" onclick="confirmCheckout()" disabled>Confirm
-                        Order</button>
+                    <button class="confirm-btn" id="confirmCheckoutBtn" onclick="confirmCheckout()">Place Order</button>
                 </div>
             </div>
         </div>

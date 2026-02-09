@@ -36,7 +36,8 @@ const sampleProducts = [
         category: 'nasi padang',
         description: 'Nasi dengan rendang daging sapi empuk',
         tags: ['nasi', 'padang', 'rendang', 'daging', 'beef', 'spicy'],
-        available: true
+        available: true,
+        biddingEnabled: true
     },
     {
         id: 'p2',
@@ -46,7 +47,8 @@ const sampleProducts = [
         category: 'nasi padang',
         description: 'Nasi dengan ayam bakar bumbu padang',
         tags: ['nasi', 'padang', 'ayam', 'chicken', 'bakar', 'grilled'],
-        available: true
+        available: true,
+        biddingEnabled: true
     },
     {
         id: 'p3',
@@ -88,7 +90,8 @@ const sampleProducts = [
         category: 'snack',
         description: 'Pisang goreng dengan topping coklat leleh',
         tags: ['sweet', 'manis', 'pisang', 'banana', 'coklat', 'chocolate', 'cheap', 'murah'],
-        available: true
+        available: true,
+        biddingEnabled: true
     },
     {
         id: 'p7',

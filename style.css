@@ -628,12 +628,17 @@ body {
     max-height: 50vh;
 }
 
+/* Order Item Redesign */
 .order-item {
-    background: #f9fafb;
-    border-radius: 12px;
+    background: white;
+    border-radius: 16px;
     padding: 16px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .order-item:last-child {
@@ -644,47 +649,182 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 8px;
+    gap: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 12px;
+    margin-bottom: 0;
+}
+
+.order-item-info {
+    flex: 1;
 }
 
 .order-item-name {
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     color: var(--text-primary);
+    display: block;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.order-item-seller {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .order-item-status {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-weight: 500;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
+/* Status Colors */
 .order-item-status.pending {
-    background: #fef3c7;
-    color: #d97706;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
 }
 
 .order-item-status.confirmed {
-    background: #d1fae5;
-    color: #059669;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #d1fae5;
 }
 
-.order-item-meta {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
+.order-item-status.pending_agreement {
+    background: #fefce8;
+    color: #a16207;
+    border: 1px solid #fef08a;
 }
 
-.order-item-actions {
+.order-item-status.pending_payment {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #dbeafe;
+}
+
+/* Price Section */
+.order-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.order-main-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.order-time {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Action Footer */
+.order-footer {
+    padding-top: 12px;
     display: flex;
     gap: 8px;
 }
 
-.order-chat-btn {
+.chat-seller-btn {
+    width: 100%;
+    padding: 12px;
+    background: white;
+    color: var(--text-primary);
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-seller-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+/* Bid Info Box */
+.buyer-bid-box {
+    background: #fafafa;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    text-align: center;
+}
+
+.bid-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bid-stat-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.bid-stat-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bid-stat.agreed .bid-stat-value {
+    color: #059669;
+}
+
+.bid-stat.your-bid .bid-stat-value {
+    color: #d97706;
+}
+
+.bid-stat.original .bid-stat-value {
+    color: #6b7280;
+    text-decoration: line-through;
+}
+
+/* Order Payment Selection */
+.order-payment-selection {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.payment-prompt {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #059669;
+}
+
+.payment-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.payment-btn {
     flex: 1;
     padding: 10px 16px;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    color: white;
     border: none;
     border-radius: 8px;
     font-size: 13px;
@@ -694,9 +834,29 @@ body {
     transition: all 0.2s ease;
 }
 
-.order-chat-btn:hover {
+.payment-btn.qris {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+}
+
+.payment-btn.cash {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.payment-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.payment-selected {
+    font-size: 12px;
+    color: #059669;
+    background: #ecfdf5;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-weight: 500;
 }
 
 .empty-orders {
@@ -1315,6 +1475,133 @@ body {
     padding-top: 12px;
     border-top: 2px solid #e5e7eb;
     font-size: 16px;
+}
+
+/* Bid Section */
+.bid-section {
+    background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%);
+    border: 2px solid #fbbf24;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.bid-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #92400e;
+}
+
+.bid-description {
+    font-size: 13px;
+    color: #a16207;
+    margin-bottom: 12px;
+}
+
+.bid-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.bid-currency {
+    padding: 10px 12px;
+    font-weight: 600;
+    color: #92400e;
+    background: #fef9c3;
+    border-radius: 6px;
+}
+
+.bid-input {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+}
+
+.bid-note {
+    font-size: 12px;
+    color: #a16207;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* Order Type Section */
+.order-type-section {
+    margin-bottom: 20px;
+}
+
+.order-type-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.order-type-options {
+    display: flex;
+    gap: 12px;
+}
+
+.order-type-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.order-type-option:hover {
+    border-color: var(--primary);
+}
+
+.order-type-option.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(0, 126, 167, 0.1) 0%, rgba(0, 168, 232, 0.1) 100%);
+}
+
+.order-type-icon {
+    font-size: 24px;
+}
+
+.order-type-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.order-type-info strong {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.order-type-info span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Checkout Note */
+.checkout-note {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+}
+
+.checkout-note p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
 }
 
 /* Payment Section */
@@ -2103,6 +2390,141 @@ body {
     left: calc(100% - 32px);
 }
 
+/* ============================================
+   KING MODE TOGGLE
+   ============================================ */
+.king-toggle {
+    position: relative;
+    width: 70px;
+    height: 36px;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    border-radius: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.king-toggle.active {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.king-icon {
+    font-size: 16px;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.king-icon.off {
+    opacity: 1;
+}
+
+.king-icon.on {
+    opacity: 0.4;
+}
+
+.king-toggle.active .king-icon.off {
+    opacity: 0.4;
+}
+
+.king-toggle.active .king-icon.on {
+    opacity: 1;
+}
+
+.king-slider {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background: white;
+    border-radius: 50%;
+    left: 4px;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.king-toggle.active .king-slider {
+    left: calc(100% - 32px);
+}
+
+/* ============================================
+   VOICE BUTTON (King Mode)
+   ============================================ */
+.voice-btn {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.voice-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.voice-btn.recording {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    animation: voicePulse 1s infinite;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes voicePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* King Mode Status Indicator */
+.king-mode-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    animation: crownBounce 2s infinite;
+    z-index: 10;
+}
+
+.king-mode-indicator.active {
+    display: flex;
+}
+
+@keyframes crownBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
 /* App Info */
 .settings-group.app-info {
     background: linear-gradient(135deg, rgba(0, 126, 167, 0.05) 0%, rgba(0, 168, 232, 0.05) 100%);
@@ -2258,4 +2680,130 @@ body.dark-mode .modal-header h3 {
 
 body.dark-mode .modal-footer {
     border-color: #374151;
+}
+/* ========================================= */
+/* REDESIGNED ORDER ITEM STYLES (Overrides)  */
+/* ========================================= */
+
+/* Bid Info Box */
+.buyer-bid-box {
+    background: #fafafa;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    text-align: center;
+}
+
+.bid-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bid-stat-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.bid-stat-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.bid-stat.agreed .bid-stat-value { color: #059669; }
+.bid-stat.your-bid .bid-stat-value { color: #d97706; }
+.bid-stat.original .bid-stat-value { color: #6b7280; text-decoration: line-through; }
+
+/* Payment Selection - Redesigned */
+.payment-selection-box {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 4px;
+}
+
+.payment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #0369a1;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.payment-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.payment-option-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.payment-option-btn.qris {
+    background: #3b82f6;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.payment-option-btn.cash {
+    background: #10b981;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+}
+
+.payment-option-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(110%);
+}
+
+.payment-icon { font-size: 20px; }
+.payment-label { font-size: 12px; font-weight: 600; }
+
+.payment-confirmed-badge {
+    background: #ecfdf5;
+    color: #059669;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px dashed #34d399;
+    width: fit-content;
+}
+
+/* Payment Button Selected State */
+.payment-option-btn.selected {
+    border: 2px solid #2563eb;
+    background: #eff6ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+.payment-option-btn.qris.selected {
+    background: #3b82f6;
+    border-color: #1d4ed8;
+    color: white;
+}
+.payment-option-btn.cash.selected {
+    background: #10b981;
+    border-color: #059669;
+    color: white;
 }

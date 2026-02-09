@@ -28,6 +28,14 @@ A smart, AI-powered e-commerce marketplace featuring "Koko" - a cheeky, context-
 -   **Buyer Communication:** Integrated chat to reply to buyer inquiries.
 -   **Availability Toggle:** Instantly mark items as "Sold Out" or "Available".
 
+### 👑 King Mode (Alpha)
+-   **Persona Switch:** Changes Koko from a shopkeeper to a loyal butler.
+-   **Auto-Checkout:** Streamlined "one-click" buying experience for VIPs, bypassing confirmation screens.
+
+## 📄 Documentation
+For a detailed technical breakdown and visual preview, check out the generated documentation file:
+-   [Project_Documentation.docx](Project_Documentation.docx)
+
 ## 🛠️ Tech Stack
 
 -   **Frontend:** HTML5, CSS3, Vanilla JavaScript (ES6+).
