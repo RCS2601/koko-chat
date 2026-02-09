@@ -6,14 +6,14 @@
 // Firebase configuration
 // TODO: Replace with your own Firebase config from Firebase Console
 const firebaseConfig = {
-    apiKey: "AIzaSyDntPg7d5iCs6NeRxoRhQyZ4LrWAEH6Yw0",
-    authDomain: "tes-doang-1.firebaseapp.com",
-    databaseURL: "https://tes-doang-1-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "tes-doang-1",
-    storageBucket: "tes-doang-1.firebasestorage.app",
-    messagingSenderId: "262759137542",
-    appId: "1:262759137542:web:d5d04935105a8dc3ab1e87",
-    measurementId: "G-QWWQP037VH"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
+    measurementId: "G-MEASUREMENT_ID"
 };
 
 // Initialize Firebase

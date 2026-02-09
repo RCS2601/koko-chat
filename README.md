@@ -61,13 +61,14 @@ For a detailed technical breakdown and visual preview, check out the generated d
     ```
 
 2.  **Configure Firebase**
-    -   Open `firebase-config.js` (or create it if missing based on `app.js` needs).
-    -   Paste your Firebase configuration object.
+    -   Open `firebase-config.js`.
+    -   Replace the `firebaseConfig` object with your own credentials from the Firebase Console.
+    -   *Note: The file in the repo contains placeholders for security.*
 
 3.  **Configure AI**
     -   Open `app.js`.
-    -   Find `const GROQ_API_KEY = 'YOUR_GROQ_API_KEY';`.
-    -   Replace `'YOUR_GROQ_API_KEY'` with your actual Groq API key.
+    -   Find `const GROQ_API_KEY` and `const OPENROUTER_API_KEY`.
+    -   Replace the placeholder text with your actual API keys.
     -   *Note: Never commit your actual API key to GitHub!*
 
 4.  **Run the App**
